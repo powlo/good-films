@@ -6,7 +6,7 @@ This is a sample template for sam-app - Below is a brief explanation of what we 
 .
 ├── README.md                   <-- This instructions file
 ├── event.json                  <-- API Gateway Proxy Integration event payload
-├── hello_world                 <-- Source code for a lambda function
+├── guardian_films                 <-- Source code for a lambda function
 │   ├── __init__.py
 │   ├── app.py                  <-- Lambda function code
 │   ├── requirements.txt        <-- Lambda function code
@@ -62,7 +62,7 @@ AWS Lambda Python runtime requires a flat folder with all dependencies including
     HelloWorldFunction:
         Type: AWS::Serverless::Function
         Properties:
-            CodeUri: hello_world/
+            CodeUri: guardian_films/
             ...
 ```
 
