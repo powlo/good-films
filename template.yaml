@@ -6,7 +6,7 @@ Description: >
   website for favourable reviews and puts them into a trakt list.
 
 Resources:
-  GuardianFilmsFunction:
+  LambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
@@ -14,9 +14,9 @@ Resources:
       Runtime: python3.6
 
 Outputs:
-  GuardianFilmsFunction:
+  LambdaFunction:
     Description: "Guardian Films Lambda Function ARN"
-    Value: !GetAtt GuardianFilmsFunction.Arn
-  GuardianFilmsFunctionIamRole:
+    Value: !GetAtt LambdaFunction.Arn
+  LambdaFunctionIamRole:
     Description: "Implicit IAM Role created for Guardian Films function"
-    Value: !GetAtt GuardianFilmsFunctionRole.Arn
+    Value: !GetAtt LambdaFunctionRole.Arn
