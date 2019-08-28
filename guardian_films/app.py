@@ -1,6 +1,6 @@
 
-from . import guardian_api
-from . import trakt_api
+import guardian_api
+import trakt_api
 
 def lambda_handler(event, context):
     films = guardian_api.get_films()
