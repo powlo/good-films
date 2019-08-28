@@ -9,7 +9,7 @@ Resources:
   GuardianFilmsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: guardian_films/
+      CodeUri: src/
       Handler: app.lambda_handler
       Runtime: python3.6
 
