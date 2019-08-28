@@ -23,7 +23,7 @@ def post_films(films):
         "trakt-api-key": CLIENT_ID
     }
 
-    trakt_ids = []
+    trakt_ids = set()
     for film in films:
         if film.get('imdb'):
             logger.info('Using imdb reference to get trakt id')
@@ -33,7 +33,7 @@ def post_films(films):
             params = {'query' : film['title'], 'fields':'title'}
             response = requests.get(SEARCH_TEXT_URL, params=params, headers=headers)
         trakt_id = response.json()[0]['movie']['ids']['trakt']
-        trakt_ids.append(trakt_id)
+        trakt_ids.add(trakt_id)
 
     # Now turn that list of ids into a POST
     data = {}
