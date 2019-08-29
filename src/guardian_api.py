@@ -15,7 +15,7 @@ def get_films(from_date=YESTERDAY):
         'star-rating': '4|5',
         'section': 'film',
         'show-fields': ['byline', 'starRating'],
-        'show-refrences': 'imdb',
+        'show-references': 'imdb',
         'show-tags': 'contributor',
         'from-date': from_date.strftime('%Y-%m-%d')
     }
@@ -35,7 +35,7 @@ def get_films(from_date=YESTERDAY):
         if 'references' in film:
             for ref in film['references']:
                 if ref['type'] == 'imdb':
-                    new_film['imdb'] = ref['id']
+                    new_film['imdb'] = ref['id'].split('/')[-1]
         if new_film:
             new_films.append(new_film)
     return new_films
