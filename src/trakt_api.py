@@ -13,6 +13,7 @@ CLIENT_ID = os.environ['TRAKT_CLIENT_ID']
 ACCESS_TOKEN = os.environ['TRAKT_ACCESS_TOKEN'] 
 
 logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def post_films(films):
 
