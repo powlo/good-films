@@ -13,6 +13,25 @@ Resources:
       Handler: app.lambda_handler
       Runtime: python3.6
 
+  ScheduledRule: 
+    Type: AWS::Events::Rule
+    Properties: 
+      Description: "ScheduledRule"
+      ScheduleExpression: "cron(0 0 * * ? *)"
+      State: "ENABLED"
+      Targets: 
+        - Arn: !GetAtt LambdaFunction.Arn
+          Id:
+            Ref: "LambdaFunction"
+
+  InvokeLambdaPermission: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt ScheduledRule.Arn
+
 Outputs:
   LambdaFunction:
     Description: "Guardian Films Lambda Function ARN"
