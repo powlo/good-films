@@ -17,7 +17,7 @@ def get_films(from_date=YESTERDAY):
         'show-fields': ['byline', 'starRating'],
         'show-refrences': 'imdb',
         'show-tags': 'contributor',
-        'from-date': from_date.strftime('%y-%m-%d')
+        'from-date': from_date.strftime('%Y-%m-%d')
     }
     # gets films from guardian.
     response = requests.get(SEARCH_URL, params=params)
