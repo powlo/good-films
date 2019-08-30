@@ -5,7 +5,7 @@ import requests
 
 BASE_URL = 'https://content.guardianapis.com'
 SEARCH_URL = BASE_URL + '/search'
-API_KEY = os.environ['GUARDIAN_API_KEY']
+API_KEY = os.environ.get('GUARDIAN_API_KEY')
 TITLE_REGEX = re.compile(r'^([\w\s]+)\sreview')
 YESTERDAY = (datetime.now() - timedelta(days=1))
 

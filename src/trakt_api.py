@@ -9,8 +9,8 @@ SEARCH_TEXT_URL = BASE_URL + '/search/movie'
 SEARCH_IMDB_URL = BASE_URL + '/search/imdb/%s'
 LIST_URL = BASE_URL + '/users/%s/lists/%s/items' % ('ukdefresit', 'guardian-films')
 
-CLIENT_ID = os.environ['TRAKT_CLIENT_ID'] 
-ACCESS_TOKEN = os.environ['TRAKT_ACCESS_TOKEN'] 
+CLIENT_ID = os.environ.get('TRAKT_CLIENT_ID')
+ACCESS_TOKEN = os.environ.get('TRAKT_ACCESS_TOKEN')
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
