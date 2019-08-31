@@ -1,0 +1,24 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.7
+  pre_build:
+    commands:
+      - echo Installing...
+      - pip install -r src/requirements.txt
+      - pip install aws-sam-cli
+      - export PYTHONPATH=`realpath ./src/`
+  build:
+    commands:
+      - echo Building...
+      - python -m unittest discover --start-directory ./tests/
+      # - sam build
+      # - sam package --s3-bucket $PACKAGE_BUCKET --output-template-file .aws-sam/package/template.yaml
+  post_build:
+    commands:
+      - echo Build completed on `date`
+artifacts:
+  files:
+    - target/messageUtil-1.0.jar
