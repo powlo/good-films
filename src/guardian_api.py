@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import logging
 import os
 import re
 import requests
@@ -6,8 +7,11 @@ import requests
 BASE_URL = 'https://content.guardianapis.com'
 SEARCH_URL = BASE_URL + '/search'
 API_KEY = os.environ.get('GUARDIAN_API_KEY')
-TITLE_REGEX = re.compile(r'^([\w\s]+)\sreview')
+TITLE_REGEX = re.compile(r'^([\w\s:’]+)\sreview')
 YESTERDAY = (datetime.now() - timedelta(days=1))
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def get_films(from_date=YESTERDAY):
     params = {
@@ -25,17 +29,25 @@ def get_films(from_date=YESTERDAY):
     # TODO: What if we don't succeed?
     response = response.json()
     films = response['response']['results']
-
+    if films:
+        logger.info('Found %s film reviews.' % len(films))
+    else:
+        logger.info('No film reviews found.')
     new_films = []
     for film in films:
         new_film = {}
         match = TITLE_REGEX.match(film['webTitle'])
         if match:
             new_film['title'] = match.group(1)
+        else:
+            logger.warn('Couldn\'t figure out what the title was.')
+            logger.warn('Here\'s the raw title: "%s"' % film['webTitle'])
         if 'references' in film:
             for ref in film['references']:
                 if ref['type'] == 'imdb':
                     new_film['imdb'] = ref['id'].split('/')[-1]
         if new_film:
             new_films.append(new_film)
+        else:
+            logger.warn('Got no useful data from "%s"' % film['webUrl'])
     return new_films
