@@ -3,19 +3,33 @@ import logging
 import os
 import re
 import requests
+import json
+
+import boto3
 
 BASE_URL = 'https://content.guardianapis.com'
 SEARCH_URL = BASE_URL + '/search'
-API_KEY = os.environ.get('GUARDIAN_API_KEY')
 TITLE_REGEX = re.compile(r'^([\w\s:’]+)\sreview')
 YESTERDAY = (datetime.now() - timedelta(days=1))
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+def get_api_key():
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name="eu-west-2"
+    )
+    response = client.get_secret_value(
+        SecretId="GuardianAPI"
+    )
+    secret_string = json.loads(response['SecretString'])
+    return secret_string['API_KEY']
+
 def get_films(from_date=YESTERDAY):
     params = {
-        'api-key': API_KEY,
+        'api-key': get_api_key(),
         'star-rating': '4|5',
         'section': 'film',
         'show-fields': ['byline', 'starRating'],
