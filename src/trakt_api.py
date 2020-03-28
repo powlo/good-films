@@ -32,7 +32,8 @@ def post_films(films):
             results = response.json()
         else:
             logger.info('No imdb reference provided. Performed text search.')
-            params = {'query' : film['title'], 'fields':'title'}
+            # NB We put the film title in double quotes to perform an exact match.
+            params = {'query' : '"%s"' % film['title'], 'fields':'title'}
             response = requests.get(SEARCH_TEXT_URL, params=params, headers=headers)
             results = response.json()
 
@@ -46,7 +47,7 @@ def post_films(films):
     data['movies'] = [{'ids': {'trakt': id}} for id in trakt_ids]
     response = requests.post(LIST_URL, data=json.dumps(data), headers=headers)
     if response.ok:
-        logger.info('Successfully added films to trakt list.')
+        logger.info('Successfully added %d films to trakt list.' % len(trakt_ids))
     else:
         logger.error('Failed to add films to trakt list.')
         logger.info('URL: %s' % response.url)
