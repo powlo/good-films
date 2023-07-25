@@ -16,7 +16,7 @@ Resources:
     Properties:
       CodeUri: src/
       Handler: app.lambda_handler
-      Runtime: python3.6
+      Runtime: python3.10
       Environment:
         Variables:
           GUARDIAN_API_KEY: {Ref: "GuardianAPIKey"}
