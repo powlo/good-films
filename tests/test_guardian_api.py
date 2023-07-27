@@ -9,6 +9,7 @@ class MockAPI(object):
         return {"response": {"results": [{"webTitle": "a film review"}]}}
 
 
+@mock.patch("guardian_api.get_secret", lambda _: {"API_KEY": "123"})
 @mock.patch("guardian_api.requests.get")
 class TestGuardianAPI(unittest.TestCase):
     def test_simple(self, mock_get):
