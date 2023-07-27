@@ -1,10 +1,10 @@
-import json
 import logging
 import re
 from datetime import datetime, timedelta
 
-import boto3
 import requests
+
+from aws_utils import get_secret
 
 BASE_URL = "https://content.guardianapis.com"
 SEARCH_URL = BASE_URL + "/search"
@@ -15,17 +15,9 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def get_api_key():
-    session = boto3.session.Session()
-    client = session.client(service_name="secretsmanager", region_name="eu-west-2")
-    response = client.get_secret_value(SecretId="GuardianAPI")
-    secret_string = json.loads(response["SecretString"])
-    return secret_string["API_KEY"]
-
-
 def get_films(from_date=YESTERDAY):
     params = {
-        "api-key": get_api_key(),
+        "api-key": get_secret("GuardianAPI")["API_KEY"],
         "star-rating": "4|5",
         "section": "film",
         "show-fields": ["byline", "starRating"],

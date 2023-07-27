@@ -4,6 +4,8 @@ import os
 
 import requests
 
+from aws_utils import get_secret
+
 BASE_URL = "https://api.trakt.tv"
 SEARCH_TEXT_URL = BASE_URL + "/search/movie"
 SEARCH_IMDB_URL = BASE_URL + "/search/imdb/%s"
@@ -12,16 +14,19 @@ LIST_URL = BASE_URL + "/users/%s/lists/%s/items" % ("ukdefresit", "guardian-film
 CLIENT_ID = os.environ.get("TRAKT_CLIENT_ID")
 ACCESS_TOKEN = os.environ.get("TRAKT_ACCESS_TOKEN")
 
-HEADERS = {
-    "Content-Type": "application/json",
-    "trakt-api-version": "2",
-    "Authorization": "Bearer %s" % ACCESS_TOKEN,
-    "trakt-api-key": CLIENT_ID,
-}
-
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+
+def get_headers():
+    secrets = get_secret("TraktAPI")
+    return {
+        "Content-Type": "application/json",
+        "trakt-api-version": "2",
+        "Authorization": f"Bearer {secrets['ACCESS_TOKEN']}",
+        "trakt-api-key": secrets["CLIENT_ID"],
+    }
 
 
 def search_by_exact_title(title):
@@ -30,24 +35,20 @@ def search_by_exact_title(title):
     """
     # NB We put the film title in double quotes to perform an exact match.
     params = {"query": '"%s"' % title, "fields": "title"}
-    return requests.get(SEARCH_TEXT_URL, params=params, headers=HEADERS).json()
+    headers = get_headers()
+    return requests.get(SEARCH_TEXT_URL, params=params, headers=headers).json()
 
 
 def search_by_imdb_id(id):
     """
     Convenience wrapper around trakt api to search by imdb id .
     """
-    return requests.get(SEARCH_IMDB_URL % id, headers=HEADERS).json()
+    headers = get_headers()
+    return requests.get(SEARCH_IMDB_URL % id, headers=headers).json()
 
 
 def post_films(films):
-    headers = {
-        "Content-Type": "application/json",
-        "trakt-api-version": "2",
-        "Authorization": "Bearer %s" % ACCESS_TOKEN,
-        "trakt-api-key": CLIENT_ID,
-    }
-
+    headers = get_headers()
     trakt_ids = set()
     for film in films:
         if film.get("imdb"):
