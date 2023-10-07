@@ -15,41 +15,58 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def get_films(from_date=YESTERDAY):
-    params = {
-        "api-key": get_secret("GuardianAPI")["API_KEY"],
-        "star-rating": "4|5",
-        "section": "film",
-        "show-fields": ["byline", "starRating"],
-        "show-references": "imdb",
-        "show-tags": "contributor",
-        "from-date": from_date.strftime("%Y-%m-%d"),
-    }
-    # gets films from guardian.
-    response = requests.get(SEARCH_URL, params=params)
-
-    # TODO: What if we don't succeed?
-    response = response.json()
-    films = response["response"]["results"]
-    if films:
-        logger.info("Found %s film reviews." % len(films))
+def parse_results(results):
+    """
+    Extracts the films from a search response.
+    """
+    films = []
+    if results:
+        logger.info("Found %s film reviews." % len(results))
     else:
         logger.info("No film reviews found.")
-    new_films = []
-    for film in films:
-        new_film = {}
-        match = TITLE_REGEX.match(film["webTitle"])
+    for result in results:
+        film = {}
+        match = TITLE_REGEX.match(result["webTitle"])
         if match:
-            new_film["title"] = match.group(1)
+            film["title"] = match.group(1)
         else:
             logger.warn("Couldn't figure out what the title was.")
-            logger.warn('Here\'s the raw title: "%s"' % film["webTitle"])
-        if "references" in film:
-            for ref in film["references"]:
+            logger.warn('Here\'s the raw title: "%s"' % result["webTitle"])
+        if "references" in result:
+            for ref in result["references"]:
                 if ref["type"] == "imdb":
-                    new_film["imdb"] = ref["id"].split("/")[-1]
-        if new_film:
-            new_films.append(new_film)
+                    film["imdb"] = ref["id"].split("/")[-1]
+        if film:
+            logger.info("Review link for '%s': %s", film["title"], result["webUrl"])
+            films.append(film)
         else:
-            logger.warn('Got no useful data from "%s"' % film["webUrl"])
+            logger.warn('Got no useful data from "%s"' % result["webUrl"])
+    return films
+
+
+def get_films(from_date=YESTERDAY):
+    current_page = 1
+    pages = 1
+    new_films = []
+    while current_page <= pages:
+        params = {
+            "api-key": get_secret("GuardianAPI")["API_KEY"],
+            "star-rating": "4|5",
+            "section": "film",
+            "show-fields": ["byline", "starRating"],
+            "show-references": "imdb",
+            "show-tags": "contributor",
+            "from-date": from_date.strftime("%Y-%m-%d"),
+            "page": current_page,
+        }
+        # gets films from guardian.
+        response = requests.get(SEARCH_URL, params=params)
+
+        # TODO: What if we don't succeed?
+        response = response.json()
+        pages = response["response"]["pages"]
+        results = response["response"]["results"]
+        films = parse_results(results)
+        new_films.extend(films)
+        current_page += 1
     return new_films
