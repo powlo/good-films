@@ -58,7 +58,17 @@ def post_films(films):
             logger.info("No imdb reference provided. Performed text search.")
             results = search_by_exact_title(film["title"])
 
-        film = results[0]["movie"]
+        try:
+            film = results[0]["movie"]
+        except IndexError:
+            logger.warn("Skipping '%s' because no results were found.", film["title"])
+            continue
+        except KeyError:
+            logger.warn(
+                "Skipping '%s' because results do not contain movie information.",
+                film["title"],
+            )
+            continue
         id = film["ids"]["trakt"]
         trakt_ids.add(id)
         logger.info(
