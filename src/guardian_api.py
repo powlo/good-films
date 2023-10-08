@@ -47,7 +47,6 @@ def parse_results(results):
 def get_films(from_date=YESTERDAY):
     current_page = 1
     pages = 1
-    new_films = []
     while current_page <= pages:
         params = {
             "api-key": get_secret("GuardianAPI")["API_KEY"],
@@ -67,6 +66,5 @@ def get_films(from_date=YESTERDAY):
         pages = response["response"]["pages"]
         results = response["response"]["results"]
         films = parse_results(results)
-        new_films.extend(films)
+        yield films
         current_page += 1
-    return new_films
