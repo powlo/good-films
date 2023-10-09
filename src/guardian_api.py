@@ -8,7 +8,7 @@ from aws_utils import get_secret
 
 BASE_URL = "https://content.guardianapis.com"
 SEARCH_URL = BASE_URL + "/search"
-TITLE_REGEX = re.compile(r"^([\w\s:’]+)\sreview")
+TITLE_REGEX = re.compile(r"^([\w\s\-:,’]+)\sreview")
 YESTERDAY = datetime.now() - timedelta(days=1)
 
 logger = logging.getLogger()
