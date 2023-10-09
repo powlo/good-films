@@ -19,8 +19,8 @@ class TestGuardianAPI(unittest.TestCase):
                 "pages": 1,
             }
         }
-        films = guardian_api.get_films()
-        self.assertEqual(1, len(films))
+        films = next(guardian_api.get_films())
+        self.assertEqual(1, len(list(films)))
         self.assertEqual({"title": "a film"}, films[0])
 
     def test_parse_results(self, mock_get):
