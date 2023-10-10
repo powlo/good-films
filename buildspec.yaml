@@ -8,14 +8,14 @@ phases:
     commands:
       - echo Installing...
       - pip install -r src/requirements.txt
-      - pip install aws-sam-cli
       - export PYTHONPATH=`realpath ./src/`
   build:
     commands:
-      - echo Building...
+      - echo Testing...
       - python -m unittest discover --start-directory ./tests/
-      # - sam build
-      # - sam package --s3-bucket $PACKAGE_BUCKET --output-template-file .aws-sam/package/template.yaml
+      - echo Building...
+      - sam build
+      - sam deploy --no-confirm-changeset --debug
   post_build:
     commands:
       - echo Build completed on `date`
