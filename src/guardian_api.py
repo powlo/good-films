@@ -32,6 +32,7 @@ def parse_results(results):
         else:
             logger.warn("Couldn't figure out what the title was.")
             logger.warn('Here\'s the raw title: "%s"' % result["webTitle"])
+            film["title"] = result["webTitle"]
         if "references" in result:
             for ref in result["references"]:
                 if ref["type"] == "imdb":
