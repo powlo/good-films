@@ -1,6 +1,7 @@
 import logging
 import re
 from datetime import datetime, timedelta
+from typing import List, Set
 
 import requests
 
@@ -14,35 +15,23 @@ YESTERDAY = datetime.now() - timedelta(days=1)
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+# Code that interacts with Guardian API.
+# Documentation is found here: https://open-platform.theguardian.com/documentation/
 
-def parse_results(results):
+
+def extract_imdb_ids(results: List) -> Set:
     """
-    Extracts the films from a search response.
+    Extracts the imdb ids from a list of films provided by the Guardian API.
     """
-    films = []
-    if results:
-        logger.info("Found %s film reviews." % len(results))
-    else:
-        logger.info("No film reviews found.")
+    ids = set()
     for result in results:
-        film = {}
-        match = TITLE_REGEX.match(result["webTitle"])
-        if match:
-            film["title"] = match.group(1)
-        else:
-            logger.warn("Couldn't figure out what the title was.")
-            logger.warn('Here\'s the raw title: "%s"' % result["webTitle"])
-            film["title"] = result["webTitle"]
-        if "references" in result:
-            for ref in result["references"]:
-                if ref["type"] == "imdb":
-                    film["imdb"] = ref["id"].split("/")[-1]
-        if film:
-            logger.info("Review link for '%s': %s", film["title"], result["webUrl"])
-            films.append(film)
-        else:
-            logger.warn('Got no useful data from "%s"' % result["webUrl"])
-    return films
+        if "references" not in result:
+            continue
+        for ref in result["references"]:
+            if ref["type"] == "imdb":
+                id = ref["id"].split("/")[-1]
+                ids.add(id)
+    return ids
 
 
 def get_films(from_date=YESTERDAY):
@@ -65,7 +54,6 @@ def get_films(from_date=YESTERDAY):
         # TODO: What if we don't succeed?
         response = response.json()
         pages = response["response"]["pages"]
-        results = response["response"]["results"]
-        films = parse_results(results)
+        films = response["response"]["results"]
         yield films
         current_page += 1

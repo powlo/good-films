@@ -1,6 +1,6 @@
 import json
 import logging
-import os
+from typing import Set
 
 import requests
 
@@ -10,10 +10,6 @@ BASE_URL = "https://api.trakt.tv"
 SEARCH_TEXT_URL = BASE_URL + "/search/movie"
 SEARCH_IMDB_URL = BASE_URL + "/search/imdb/%s"
 LIST_URL = BASE_URL + "/users/%s/lists/%s/items" % ("ukdefresit", "guardian-films")
-
-CLIENT_ID = os.environ.get("TRAKT_CLIENT_ID")
-ACCESS_TOKEN = os.environ.get("TRAKT_ACCESS_TOKEN")
-
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -30,6 +26,7 @@ def get_headers():
 
 
 def search_by_exact_title(title):
+    # TODO: Remove.
     """
     Convenience wrapper around trakt api to search by exact title matches.
     """
@@ -47,30 +44,28 @@ def search_by_imdb_id(id):
     return requests.get(SEARCH_IMDB_URL % id, headers=headers).json()
 
 
-def post_films(films):
+def post_film_ids(ids: Set):
+    """
+    Takes a set of ids that can be recognised by IMDB (eg tt0076759)
+    and POSTs them to trakt.
+    """
     headers = get_headers()
     trakt_ids = set()
-    for film in films:
-        if film.get("imdb"):
-            logger.info("Used imdb reference to get trakt id")
-            results = search_by_imdb_id(film["imdb"])
-        else:
-            logger.info("No imdb reference provided. Performed text search.")
-            results = search_by_exact_title(film["title"])
-
+    for imdb_id in ids:
+        results = search_by_imdb_id(imdb_id)
         try:
             film = results[0]["movie"]
         except IndexError:
-            logger.warn("Skipping '%s' because no results were found.", film["title"])
+            logger.warn("Skipping '%s' because no results were found.", imdb_id)
             continue
         except KeyError:
             logger.warn(
                 "Skipping '%s' because results do not contain movie information.",
-                film["title"],
+                imdb_id,
             )
             continue
-        id = film["ids"]["trakt"]
-        trakt_ids.add(id)
+        track_id = film["ids"]["trakt"]
+        trakt_ids.add(track_id)
         logger.info(
             'Found "%s (%s)", <trakt %s> on trakt.' % (film["title"], film["year"], id)
         )
