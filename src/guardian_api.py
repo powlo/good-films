@@ -1,6 +1,6 @@
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Set
 
 import requests
@@ -10,7 +10,6 @@ from aws_utils import get_secret
 BASE_URL = "https://content.guardianapis.com"
 SEARCH_URL = BASE_URL + "/search"
 TITLE_REGEX = re.compile(r"^([\w\s\-:,’]+)\sreview")
-YESTERDAY = datetime.now() - timedelta(days=1)
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -34,7 +33,7 @@ def extract_imdb_ids(results: List) -> Set:
     return ids
 
 
-def get_films(from_date=YESTERDAY):
+def get_films(from_date: datetime):
     current_page = 1
     pages = 1
     while current_page <= pages:

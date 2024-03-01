@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timedelta
 
 import guardian_api
 import trakt_api
@@ -6,9 +7,11 @@ import trakt_api
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+YESTERDAY = datetime.now() - timedelta(days=1)
+
 
 def lambda_handler(event, context):
-    for films in guardian_api.get_films():
+    for films in guardian_api.get_films(YESTERDAY):
         if films:
             logger.info("Found %s film reviews." % len(films))
             for film in films:

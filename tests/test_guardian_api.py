@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime
 from unittest import mock
 
 import guardian_api
@@ -19,7 +20,9 @@ class TestGuardianAPI(unittest.TestCase):
                 "pages": 1,
             }
         }
-        films = next(guardian_api.get_films())
+
+        yesterday = datetime(2024, 2, 29)
+        films = next(guardian_api.get_films(yesterday))
         self.assertEqual(1, len(list(films)))
         self.assertTrue(mock_film in films)
 
