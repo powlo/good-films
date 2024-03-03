@@ -22,3 +22,15 @@ def put_secret(secret_id, secret_values):
         SecretId=secret_id,
         SecretString=json.dumps(secret_values),
     )
+
+
+def get_parameter(name):
+    session = boto3.Session()
+    client = session.client(service_name="ssm", region_name="eu-west-2")
+    return client.get_parameter(Name=name)["Parameter"]["Value"]
+
+
+def put_parameter(name, value):
+    session = boto3.Session()
+    client = session.client(service_name="ssm", region_name="eu-west-2")
+    return client.put_parameter(Name=name, Value=value, Type="String")

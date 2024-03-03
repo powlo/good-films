@@ -44,7 +44,7 @@ def search_by_imdb_id(id):
     return requests.get(SEARCH_IMDB_URL % id, headers=headers).json()
 
 
-def post_film_ids(ids: Set):
+def post_film_ids(ids: Set[str]):
     """
     Takes a set of ids that can be recognised by IMDB (eg tt0076759)
     and POSTs them to trakt.

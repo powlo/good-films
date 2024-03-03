@@ -49,10 +49,8 @@ def get_films(from_date: datetime):
         }
         # gets films from guardian.
         response = requests.get(SEARCH_URL, params=params)
-
-        # TODO: What if we don't succeed?
-        response = response.json()
-        pages = response["response"]["pages"]
-        films = response["response"]["results"]
+        data = response.json()
+        pages = data["response"]["pages"]
+        films = data["response"]["results"]
         yield films
         current_page += 1
