@@ -17,7 +17,14 @@ phases:
       - coverage xml
       - echo Building...
       - sam build
-      - sam deploy --no-confirm-changeset --debug
+      # We could be more sophisticated with our changeset, and only generate one
+      # if we detect any changes. Either by doing a diff on src/ or with something
+      # in the sam cli?
+      - >
+        sam deploy
+        --no-confirm-changeset
+        --no-fail-on-empty-changeset
+        --debug
   post_build:
     commands:
       - echo Build completed on `date`
