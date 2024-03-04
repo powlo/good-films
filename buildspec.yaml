@@ -8,7 +8,7 @@ phases:
     commands:
       - echo Installing...
       - pip install -r src/requirements.txt
-      - pip install -r src/requirements-test.txt
+      - pip install -r tests/requirements-test.txt
       - export PYTHONPATH=`realpath ./src/`
   build:
     commands:
