@@ -33,4 +33,4 @@ def get_parameter(name):
 def put_parameter(name, value):
     session = boto3.Session()
     client = session.client(service_name="ssm", region_name="eu-west-2")
-    return client.put_parameter(Name=name, Value=value, Type="String")
+    return client.put_parameter(Name=name, Value=value, Type="String", Overwrite=True)
