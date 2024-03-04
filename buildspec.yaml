@@ -8,17 +8,24 @@ phases:
     commands:
       - echo Installing...
       - pip install -r src/requirements.txt
+      - pip install -r src/requirements-test.txt
       - export PYTHONPATH=`realpath ./src/`
   build:
     commands:
       - echo Testing...
-      - python -m unittest discover --start-directory ./tests/
+      - coverage run -m unittest discover tests/
+      - coverage xml
       - echo Building...
       - sam build
       - sam deploy --no-confirm-changeset --debug
   post_build:
     commands:
       - echo Build completed on `date`
+reports:
+  coverage-report:
+    files:
+      - 'coverage.xml'
+    file-format: 'COBERTURAXML'
 artifacts:
   files:
     - target/messageUtil-1.0.jar
