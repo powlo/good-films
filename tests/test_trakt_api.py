@@ -1,4 +1,3 @@
-import json
 from unittest import TestCase, mock
 
 from mock_functions import mock_get, mock_get_secret_value
