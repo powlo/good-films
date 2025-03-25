@@ -9,6 +9,7 @@ from aws_utils import get_secret
 BASE_URL = "https://api.trakt.tv"
 SEARCH_TEXT_URL = BASE_URL + "/search/movie"
 SEARCH_IMDB_URL = BASE_URL + "/search/imdb/%s"
+USER_SETTINGS_URL = BASE_URL + "/users/settings"
 LIST_URL = BASE_URL + "/users/%s/lists/%s/items" % ("ukdefresit", "guardian-films")
 
 logger = logging.getLogger()
@@ -67,12 +68,16 @@ def post_film_ids(ids: Set[str]):
         track_id = film["ids"]["trakt"]
         trakt_ids.add(track_id)
         logger.info(
-            'Found "%s (%s)", <trakt %s> on trakt.' % (film["title"], film["year"], id)
+            'Found "%s (%s)", <imdb %s> on trakt.'
+            % (film["title"], film["year"], imdb_id)
         )
 
     # Now turn that list of ids into a POST
     data = {}
     data["movies"] = [{"ids": {"trakt": id}} for id in trakt_ids]
+
+    # TODO: We need to handle situation where we're trying to post continuously.
+    # response will contain a "retry-after" in the header. User that.
     response = requests.post(LIST_URL, data=json.dumps(data), headers=headers)
     if response.ok:
         logger.info("Successfully added %d films to trakt list." % len(trakt_ids))
@@ -80,3 +85,10 @@ def post_film_ids(ids: Set[str]):
         logger.error("Failed to add films to trakt list.")
         logger.info("URL: %s" % response.url)
         logger.info("Reason: (%s) %s" % (response.status_code, response.reason))
+
+
+# Mostly for debug purposes.
+def get_user_settings():
+    headers = get_headers()
+    response = requests.get(USER_SETTINGS_URL, headers=headers)
+    print(response)
