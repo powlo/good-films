@@ -24,12 +24,15 @@ def extract_imdb_ids(results: List) -> Set:
     """
     ids = set()
     for result in results:
-        if "references" not in result:
+        if "references" not in result or not result["references"]:
+            logger.warning(f'No references for article "{result['webTitle']}"')
             continue
         for ref in result["references"]:
             if ref["type"] == "imdb":
                 id = ref["id"].split("/")[-1]
                 ids.add(id)
+            else:
+                logger.warning(f'No imdb references for article "{result['webTitle']}"')
     return ids
 
 
