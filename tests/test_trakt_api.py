@@ -2,7 +2,7 @@ from unittest import TestCase, mock
 
 from mock_functions import mock_get, mock_get_secret_value
 
-from trakt_api import post_film_ids
+from trakt_api import update_list
 
 
 class TestPostFilmIds(TestCase):
@@ -13,11 +13,11 @@ class TestPostFilmIds(TestCase):
         mock_session.return_value.client.return_value.get_secret_value = (
             mock_get_secret_value
         )
-        post_film_ids({"1", "2"})
+        update_list({"tt123"})
         self.assertTrue(mock_post.called)
         mock_post.assert_called_once_with(
             "https://api.trakt.tv/users/ukdefresit/lists/guardian-films/items",
-            data='{"movies": [{"ids": {"trakt": 7}}]}',
+            data='{"movies": [{"ids": {"imdb": "tt123"}}]}',
             headers={
                 "Content-Type": "application/json",
                 "trakt-api-version": "2",

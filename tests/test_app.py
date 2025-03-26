@@ -21,7 +21,7 @@ class TestLambdaHandler(TestCase):
         self.assertTrue(mock_post.called)
         mock_post.assert_called_once_with(
             "https://api.trakt.tv/users/ukdefresit/lists/guardian-films/items",
-            data='{"movies": [{"ids": {"trakt": 7}}]}',
+            data='{"movies": [{"ids": {"imdb": "tt123456"}}]}',
             headers={
                 "Content-Type": "application/json",
                 "trakt-api-version": "2",
@@ -30,7 +30,7 @@ class TestLambdaHandler(TestCase):
             },
         )
 
-    @mock.patch("app.trakt_api.post_film_ids", mock.MagicMock)
+    @mock.patch("app.trakt_api.update_list", mock.MagicMock)
     @mock.patch("app.guardian_api.get_films", mock.MagicMock(return_value=[]))
     @mock.patch("app.get_parameter", lambda _: "2024-2-29")
     @mock.patch("app.datetime")

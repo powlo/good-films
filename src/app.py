@@ -14,7 +14,6 @@ def lambda_handler(event, context):
     # The date the last time the script ran is stored in a parameter.
     # So days are not lost if the script fails for any reason.
     last_success = get_parameter("GoodFilms_LastSuccess")
-    last_success = "2025-01-19"
     from_date = datetime.strptime(last_success, "%Y-%m-%d")
 
     for films in guardian_api.get_films(from_date):
@@ -22,12 +21,10 @@ def lambda_handler(event, context):
             logger.info("Found %s film reviews." % len(films))
             for film in films:
                 logger.info(f'"{film["webTitle"]}" ({film["webUrl"]})')
-            ids = guardian_api.extract_imdb_ids(films)
+            imdb_ids = guardian_api.extract_imdb_ids(films)
+            trakt_api.update_list(imdb_ids)
         else:
             logger.info("No film reviews found.")
-            ids = set()
-
-        trakt_api.post_film_ids(ids)
 
     # Update the "LastSuccess" parameter ready for the next run.
     now = datetime.now()
