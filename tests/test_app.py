@@ -10,24 +10,27 @@ class TestLambdaHandler(TestCase):
 
     @mock.patch("guardian_api.get_secret", lambda _: {"API_KEY": "123"})
     @mock.patch(
-        "trakt_api.get_secret", lambda _: {"ACCESS_TOKEN": "123", "CLIENT_ID": "abc123"}
+        "trakt_api.get_secret",
+        lambda _: {
+            "ACCESS_TOKEN": "123",
+            "CLIENT_ID": "abc123",
+            "USER_ID": "auser",
+            "LIST_ID": "alist",
+            "MAX_LIST_SIZE": "5",
+        },
     )
     @mock.patch("app.get_parameter", lambda _: "2024-2-29")
     @mock.patch("app.put_parameter", mock.MagicMock)
     @mock.patch("requests.get", mock.MagicMock(side_effect=mock_get))
-    @mock.patch("requests.post")
-    def test_film_posted_to_trakt(self, mock_post):
+    @mock.patch("trakt_api.requests.Session")
+    def test_film_posted_to_trakt(self, mock_session):
+        mock_session.return_value.get = mock.MagicMock(side_effect=mock_get)
+        mock_post = mock_session.return_value.post
         app.lambda_handler(None, None)
         self.assertTrue(mock_post.called)
         mock_post.assert_called_once_with(
-            "https://api.trakt.tv/users/ukdefresit/lists/guardian-films/items",
+            "https://api.trakt.tv/users/auser/lists/alist/items",
             data='{"movies": [{"ids": {"imdb": "tt123456"}}]}',
-            headers={
-                "Content-Type": "application/json",
-                "trakt-api-version": "2",
-                "Authorization": "Bearer 123",
-                "trakt-api-key": "abc123",
-            },
         )
 
     @mock.patch("app.trakt_api.update_list", mock.MagicMock)

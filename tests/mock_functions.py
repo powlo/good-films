@@ -11,6 +11,9 @@ def mock_get(*args, **kwargs):
     # to the lambda_handler in app.py.
     # We can't just patch twice, we have to do this url inspection
     # to determine the right response to return in each case.
+
+    # Consider: patch the guardian request, then do another
+    # patch for the trakt. Ie take advantage of the code split.
     url = args[0]
     if "guardian" in url:
         mock_film = {
@@ -57,6 +60,8 @@ def mock_get_secret_value(*args, **kwargs):
             {
                 "ACCESS_TOKEN": "123abc",
                 "CLIENT_ID": "bac123",
+                "USER_ID": "auser",
+                "LIST_ID": "alist",
             }
         )
     }
