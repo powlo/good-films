@@ -109,9 +109,11 @@ def lambda_handler(event, context):
             "trakt-api-version": "2",
             "trakt-api-key": "%s" % secrets["CLIENT_ID"],
         }
+        user_id = secrets["USER_ID"]
+        list_id = secrets["LIST_ID"]
         response = http.request(
             "GET",
-            "https://api.trakt.tv/users/ukdefresit/lists/guardian-films",
+            f"https://api.trakt.tv/users/{user_id}/lists/{list_id}",
             headers=headers,
         )
         if response.status == 200:
