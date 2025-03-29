@@ -73,13 +73,14 @@ def lambda_handler(event, context):
             # TODO: If the access token is now invalid, we should
             # re-initilise completely. Ie make call to create_trakt_tokens.
             error_json = json.loads(response.data)
+            # fmt: off
             error_message = (
-                str(response.status)
-                + " "
-                + response.reason
-                + ". "
+                str(response.status) +
+                f" {response.reason}" if response.reason else "" +
+                ". "
                 + error_json["error_description"]
             )
+            # fmt: on
             raise ValueError(error_message)
         new_tokens = json.loads(response.data)
         secrets["ACCESS_TOKEN"] = new_tokens["access_token"]
