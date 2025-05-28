@@ -9,13 +9,48 @@ from aws_utils import get_secret
 
 BASE_URL = "https://content.guardianapis.com"
 SEARCH_URL = BASE_URL + "/search"
-TITLE_REGEX = re.compile(r"^([\w\s\-:,’]+)\sreview")
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # Code that interacts with Guardian API.
 # Documentation is found here: https://open-platform.theguardian.com/documentation/
+
+
+def get_imdb_id(article: dict) -> str | None:
+    """
+    Extracts the imdb ids from a list of films provided by the Guardian API.
+    """
+    for ref in article.get("references", []):
+        if ref["type"] == "imdb":
+            id = ref["id"].split("/")[-1]
+            return id
+
+
+def get_title(article: dict) -> str | None:
+    webTitle = article.get("webTitle", "")
+    title_regex = re.compile(r"^([\w\s\-:,’]+)\sreview")
+    match = title_regex.match(webTitle)
+    if match:
+        return str(match.groups(1)[0])
+
+
+def get_url(article: dict) -> str | None:
+    return article.get("webUrl", None)
+
+
+def parse(article: dict) -> dict:
+    title = get_title(article)
+    url = get_url(article)
+    imdb_id = get_imdb_id(article)
+    return {"title": title, "url": url, "imdb_id": imdb_id}
+
+
+class GuardianFilm:
+    def __init__(self, title: str, url: str, imdb_id: str):
+        self.title = title
+        self.url = url
+        self.imdb_id = imdb_id
 
 
 def extract_imdb_ids(results: List) -> Set:
@@ -36,7 +71,7 @@ def extract_imdb_ids(results: List) -> Set:
     return ids
 
 
-def get_films(from_date: datetime):
+def get_articles(from_date: datetime):
     current_page = 1
     pages = 1
     while current_page <= pages:
@@ -50,10 +85,11 @@ def get_films(from_date: datetime):
             "from-date": from_date.strftime("%Y-%m-%d"),
             "page": current_page,
         }
-        # gets films from guardian.
+        # gets film reviews from guardian.
         response = requests.get(SEARCH_URL, params=params)
         data = response.json()
         pages = data["response"]["pages"]
-        films = data["response"]["results"]
-        yield films
+        articles = data["response"]["results"]
+        for article in articles:
+            yield article
         current_page += 1

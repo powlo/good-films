@@ -8,7 +8,7 @@ import guardian_api
 @mock.patch("guardian_api.get_secret", lambda _: {"API_KEY": "123"})
 @mock.patch("guardian_api.requests.get")
 class TestGuardianAPI(unittest.TestCase):
-    def test_get_films(self, mock_get):
+    def test_get_articles(self, mock_get):
         mock_film = {
             "webTitle": "a film review",
             "webUrl": "www.aurl.com",
@@ -22,7 +22,7 @@ class TestGuardianAPI(unittest.TestCase):
         }
 
         yesterday = datetime(2024, 2, 29)
-        films = next(guardian_api.get_films(yesterday))
+        films = list(guardian_api.get_articles(yesterday))
         self.assertEqual(1, len(list(films)))
         self.assertTrue(mock_film in films)
 

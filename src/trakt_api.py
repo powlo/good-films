@@ -64,6 +64,18 @@ class SearchRoute:
         return response.json()
 
 
+class MovieRoute:
+    def __init__(self, session: requests.Session, base_url: str, movie_id: str):
+        self.session = session
+        self.base_url = base_url + f"/movies/{movie_id}"
+
+    def aliases(self):
+        url = self.base_url + "/aliases"
+        response = self.session.get(url)
+        response.raise_for_status()
+        return response.json()
+
+
 class TraktAPI:
     def __init__(
         self, client_id: str, access_token: str, base_url="https://api.trakt.tv"
@@ -87,12 +99,18 @@ class TraktAPI:
     def search(self):
         return SearchRoute(self.session, self.base_url)
 
+    def movie(self, movie_id: str):
+        return MovieRoute(self.session, self.base_url, movie_id)
+
 
 def update_list(imdb_ids: Set[str]):
     """
     Takes a set of ids that can be recognised by IMDB (eg tt0076759)
     and POSTs them to trakt.
     """
+    # Observation: We're doing _two_ things at once here. Updating a
+    # list (which is nice) and managing the state of the list
+    # We should figure out how to split this apart.
     secrets = get_secret("TraktAPI")
     user_id = secrets["USER_ID"]
     list_id = secrets["LIST_ID"]

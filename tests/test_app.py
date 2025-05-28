@@ -34,7 +34,7 @@ class TestLambdaHandler(TestCase):
         )
 
     @mock.patch("app.trakt_api.update_list", mock.MagicMock)
-    @mock.patch("app.guardian_api.get_films", mock.MagicMock(return_value=[]))
+    @mock.patch("app.guardian_api.get_articles", mock.MagicMock(return_value=[]))
     @mock.patch("app.get_parameter", lambda _: "2024-2-29")
     @mock.patch("app.datetime")
     @mock.patch("app.put_parameter")
