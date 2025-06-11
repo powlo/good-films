@@ -17,6 +17,7 @@ mock_secret = mock.MagicMock(
 
 
 # Testing the high level function that corral concierge collate like a museum.
+@mock.patch.dict("os.environ", {"AWS_LAMBDA_FUNCTION_NAME": "LambdaFunctionName"})
 class TestUpdateList(TestCase):
     @mock.patch("boto3.Session", mock.MagicMock)
     @mock.patch("trakt_api.requests.Session")
@@ -24,7 +25,7 @@ class TestUpdateList(TestCase):
     def test_simple(self, mock_session):
         mock_session.return_value.get = mock.MagicMock(side_effect=mock_get)
 
-        update_list({"tt123"})
+        update_list(["tt123"])
         mock_post = mock_session.return_value.post
         self.assertTrue(mock_post.called)
         mock_post.assert_called_once_with(
@@ -36,6 +37,7 @@ class TestUpdateList(TestCase):
 # Testing the "routes" that we've put in trakt_api.py
 # These are really only testing that we've built the url correctly.
 # Could split out into just instantiating the route classes.
+@mock.patch.dict("os.environ", {"AWS_LAMBDA_FUNCTION_NAME": "LambdaFunctionName"})
 class TestSearch(TestCase):
     @mock.patch("trakt_api.requests.Session")
     def test_simple(self, mock_session):
@@ -50,6 +52,7 @@ class TestSearch(TestCase):
 
 
 @mock.patch("trakt_api.requests.Session")
+@mock.patch.dict("os.environ", {"AWS_LAMBDA_FUNCTION_NAME": "LambdaFunctionName"})
 class TestList(TestCase):
     def test_get(self, mock_session):
 
@@ -63,7 +66,7 @@ class TestList(TestCase):
 
     def test_add(self, mock_session):
         api = TraktAPI("fake_clientid", "fake_accesstoken")
-        imdb_ids = set(["tt123", "tt456"])
+        imdb_ids = ["tt123", "tt456"]
         api.list("auser", "alist").add(imdb_ids)
         mock_post = mock_session.return_value.post
         self.assertTrue(mock_post.called)
@@ -79,7 +82,7 @@ class TestList(TestCase):
 
     def test_delete(self, mock_session):
         api = TraktAPI("fake_clientid", "fake_accesstoken")
-        imdb_ids = set(["tt123", "tt456"])
+        imdb_ids = ["tt123", "tt456"]
         api.list("auser", "alist").delete(imdb_ids)
         mock_post = mock_session.return_value.post
         self.assertTrue(mock_post.called)

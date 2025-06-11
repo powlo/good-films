@@ -17,16 +17,17 @@ def lambda_handler(event, context):
     # The date the last time the script ran is stored in a parameter.
     # So days are not lost if the script fails for any reason.
     last_success = get_parameter("GoodFilms_LastSuccess")
+    if not os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        last_success = input(f"From Date ({last_success}): ")
     from_date = datetime.strptime(last_success, "%Y-%m-%d")
 
-    imdb_ids = set()
     films = []
     for article in guardian_api.get_articles(from_date):
         logger.info(f'"{article["webTitle"]}" ({article["webUrl"]})')
         film = guardian_api.parse(article)
         films.append(film)
 
-    imdb_ids = set([f["imdb_id"] for f in films if f["imdb_id"]])
+    imdb_ids = [f["imdb_id"] for f in films if f["imdb_id"]]
 
     # TODO: Instead of prompting, add these films to an SQS Queue.
     films_no_id = [f for f in films if not f["imdb_id"]]
@@ -35,7 +36,7 @@ def lambda_handler(event, context):
         # The env var being set indicates that we're running in an AWS Lambda.
         if not os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
             imdb_id = prompt_best_match(f["title"], f["url"])
-            imdb_ids.add(imdb_id)
+            imdb_ids.append(imdb_id)
 
     trakt_api.update_list(imdb_ids)
 
@@ -70,7 +71,7 @@ def manual_add():
             user_id = secrets["USER_ID"]
             list_id = secrets["LIST_ID"]
             api_list = trakt.list(user_id, list_id)
-            api_list.add(set(imdb_id))
+            api_list.add([imdb_id])
 
 
 def prompt_best_match(title: str, url: str) -> str | None:
@@ -93,7 +94,7 @@ def prompt_best_match(title: str, url: str) -> str | None:
         choice = (f"{title} ({year}) [score: {score}]", imdb_id)
         hint = f"https://www.imdb.com/title/{imdb_id}/"
         choices_hints[choice] = hint
-    choices_hints[("[ None ]", None)] = None
+    choices_hints[("[ Skip ]", None)] = None
     questions = [
         inquirer.List(
             "imdb_id",

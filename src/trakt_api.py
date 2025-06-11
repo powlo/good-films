@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Set
+from typing import List
 
 import requests
 
@@ -28,7 +28,7 @@ class ListRoute:
         response.raise_for_status()
         return response.json()
 
-    def add(self, imdb_ids: Set[str]):
+    def add(self, imdb_ids: List[str]) -> dict:
         data = {"movies": [{"ids": {"imdb": imdb_id}} for imdb_id in imdb_ids]}
 
         # TODO: We need to handle situation where we're trying to post continuously.
@@ -37,7 +37,7 @@ class ListRoute:
         response.raise_for_status()
         return response.json()
 
-    def delete(self, imdb_ids: Set[str]):
+    def delete(self, imdb_ids: List[str]) -> dict:
         url = self.base_url + "/remove"
         data = {"movies": [{"ids": {"imdb": imdb_id}} for imdb_id in imdb_ids]}
         response = self.session.post(url, data=json.dumps(data))
@@ -103,7 +103,7 @@ class TraktAPI:
         return MovieRoute(self.session, self.base_url, movie_id)
 
 
-def update_list(imdb_ids: Set[str]):
+def update_list(imdb_ids: List[str]):
     """
     Takes a set of ids that can be recognised by IMDB (eg tt0076759)
     and POSTs them to trakt.
@@ -124,13 +124,10 @@ def update_list(imdb_ids: Set[str]):
             "Too many items in the list. List will be truncated to make room."
         )
         items_to_delete = list_items[:excess]
-        imdb_ids_to_delete = set(
-            [item["movie"]["ids"]["imdb"] for item in items_to_delete]
-        )
+        imdb_ids_to_delete = [item["movie"]["ids"]["imdb"] for item in items_to_delete]
         response = api_list.delete(imdb_ids_to_delete)
-        info = response.json()
-        logger.info("Deleted %s from list." % info["deleted"]["movies"])
-        logger.info("List now contains %s items." % info["list"]["item_count"])
+        logger.info("Deleted %s from list." % response["deleted"]["movies"])
+        logger.info("List now contains %s items." % response["list"]["item_count"])
 
     try:
         result = api_list.add(imdb_ids)

@@ -6,6 +6,7 @@ from mock_functions import mock_get
 import app
 
 
+@mock.patch.dict("os.environ", {"AWS_LAMBDA_FUNCTION_NAME": "LambdaFunctionName"})
 class TestLambdaHandler(TestCase):
 
     @mock.patch("guardian_api.get_secret", lambda _: {"API_KEY": "123"})
