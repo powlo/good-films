@@ -25,6 +25,8 @@ def put_secret(secret_id, secret_values):
 
 
 def get_parameter(name):
+    # TODO: we don't really need the session effort here, we can just do
+    # boto3.client("ssm").
     session = boto3.Session()
     client = session.client(service_name="ssm", region_name="eu-west-2")
     return client.get_parameter(Name=name)["Parameter"]["Value"]

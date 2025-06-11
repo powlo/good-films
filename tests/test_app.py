@@ -46,3 +46,23 @@ class TestLambdaHandler(TestCase):
         mock_put_parameter.assert_called_once_with(
             "GoodFilms_LastSuccess", "2024-03-02"
         )
+
+    @mock.patch("app.get_parameter", lambda _: "2024-2-29")
+    @mock.patch("app.trakt_api.update_list", mock.MagicMock)
+    @mock.patch("app.put_parameter", mock.MagicMock)
+    @mock.patch("app.sqs")
+    @mock.patch("app.guardian_api.get_articles")
+    def test_send_to_queue(self, mock_get_articles, mock_sqs):
+        # An article with no imdb reference
+        mock_film = {
+            "webTitle": "a film review",
+            "webUrl": "www.aurl.com",
+            "references": [],
+        }
+        mock_get_articles.return_value = [mock_film]
+        app.lambda_handler(None, None)
+
+        # The film details are sent to an SQS queue.
+        mock_sqs.send_message.assert_called_once()
+        message_body = mock_sqs.send_message.call_args.kwargs["MessageBody"]
+        self.assertTrue(mock_film, message_body)

@@ -1,8 +1,10 @@
+import json
 import logging
 import os
 import sys
 from datetime import datetime
 
+import boto3
 import inquirer
 
 import guardian_api
@@ -11,6 +13,10 @@ from aws_utils import get_parameter, get_secret, put_parameter
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+sqs = boto3.client("sqs")
+
+MANUAL_PROCESSING_QUEUE_URL = os.environ["MANUAL_PROCESSING_QUEUE_URL"]
 
 
 def lambda_handler(event, context):
@@ -29,15 +35,12 @@ def lambda_handler(event, context):
 
     imdb_ids = [f["imdb_id"] for f in films if f["imdb_id"]]
 
-    # TODO: Instead of prompting, add these films to an SQS Queue.
     films_no_id = [f for f in films if not f["imdb_id"]]
-    for f in films_no_id:
-        logger.warning(f'No imdb id found for "{f["title"]}"')
-        # The env var being set indicates that we're running in an AWS Lambda.
-        if not os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
-            imdb_id = prompt_best_match(f["title"], f["url"])
-            imdb_ids.append(imdb_id)
-
+    for film in films_no_id:
+        logger.warning(f'No imdb id found for "{film["title"]}"')
+        sqs.send_message(
+            QueueUrl=MANUAL_PROCESSING_QUEUE_URL, MessageBody=json.dumps(film)
+        )
     trakt_api.update_list(imdb_ids)
 
     # Update the "LastSuccess" parameter ready for the next run.
