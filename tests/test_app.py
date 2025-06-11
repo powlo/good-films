@@ -3,7 +3,10 @@ from unittest import TestCase, mock
 
 from mock_functions import mock_get
 
-import app
+with mock.patch.dict(
+    "os.environ", {"MANUAL_PROCESSING_QUEUE_URL": "https://atestqueue"}
+):
+    import app
 
 
 @mock.patch.dict("os.environ", {"AWS_LAMBDA_FUNCTION_NAME": "LambdaFunctionName"})
