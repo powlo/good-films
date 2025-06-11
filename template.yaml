@@ -13,6 +13,14 @@ Resources:
       Handler: app.lambda_handler
       Runtime: python3.10
       Timeout: 30
+      Environment:
+        Variables:
+          MANUAL_PROCESSING_QUEUE_URL: !Ref ManualProcessingQueue
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName:
+              !GetAtt ManualProcessingQueue.QueueName
+
   ScheduledRule: 
     Type: AWS::Events::Rule
     Properties: 
@@ -31,6 +39,14 @@ Resources:
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
       SourceArn: !GetAtt ScheduledRule.Arn
+
+  ManualProcessingQueue:
+    Type: "AWS::SQS::Queue"
+    Properties:
+      MessageRetentionPeriod: 604800 # 7 days.
+      QueueName: "GoodFilms--RequireManualProcessing"
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
 
 Outputs:
   LambdaFunction:
