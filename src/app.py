@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import sys
+from dataclasses import dataclass
 from datetime import datetime
 
 import boto3
@@ -17,6 +18,13 @@ logger.setLevel(logging.INFO)
 sqs = boto3.client("sqs")
 
 MANUAL_PROCESSING_QUEUE_URL = os.environ["MANUAL_PROCESSING_QUEUE_URL"]
+
+
+@dataclass
+class FilmReview:
+    title: str
+    url: str
+    imdb_id: str
 
 
 def lambda_handler(event, context):
@@ -48,33 +56,33 @@ def lambda_handler(event, context):
     put_parameter("GoodFilms_LastSuccess", now.strftime("%Y-%m-%d"))
 
 
-def manual_add():
-    # Manually run this to add films that don't have any references.
-    # Todo: Allow the lambda handler above to dump to a queue and
-    # then we run the manual handler over that queue.
-    last_success = get_parameter("GoodFilms_LastSuccess")
-    from_date = input(f"From Date ({last_success}): ")
-    if not from_date:
-        from_date = last_success
-    from_date = datetime.strptime(from_date, "%Y-%m-%d")
-
-    films = []
-    for article in guardian_api.get_articles(from_date):
-        film = guardian_api.parse(article)
-        films.append(film)
-
-    films = [f for f in films if not f["imdb_id"]]
-    logger.info(f"Found {len(films)} films with no imdb id.")
-
+def manual_review():
+    # To be run by a human to review entries on an SQS queue.
     secrets = get_secret("TraktAPI")
     trakt = trakt_api.TraktAPI(secrets["CLIENT_ID"], secrets["ACCESS_TOKEN"])
-    for film in films:
-        imdb_id = prompt_best_match(film["title"], film["url"])
-        if imdb_id:
-            user_id = secrets["USER_ID"]
-            list_id = secrets["LIST_ID"]
-            api_list = trakt.list(user_id, list_id)
-            api_list.add([imdb_id])
+    user_id = secrets["USER_ID"]
+    list_id = secrets["LIST_ID"]
+    api_list = trakt.list(user_id, list_id)
+
+    while True:
+        response = sqs.receive_message(QueueUrl=MANUAL_PROCESSING_QUEUE_URL)
+        if not response.get("Messages"):
+            logger.info("No more films to process.")
+            break
+        for msg in response["Messages"]:
+            data = json.loads(msg["Body"])
+            try:
+                film = FilmReview(**data)
+            except TypeError:
+                logger.warning(f"Couldn't extract film review from {data}")
+                film = None
+            if film:
+                imdb_id = prompt_best_match(film.title, film.url)
+                if imdb_id:
+                    api_list.add([imdb_id])
+            sqs.delete_message(
+                QueueUrl=MANUAL_PROCESSING_QUEUE_URL, ReceiptHandle=msg["ReceiptHandle"]
+            )
 
 
 def prompt_best_match(title: str, url: str) -> str | None:
@@ -90,6 +98,9 @@ def prompt_best_match(title: str, url: str) -> str | None:
 
     choices_hints = {}
     for result in results:
+        if not result["movie"]["ids"]["imdb"]:
+            # If there's no imdb then it's probably a low quality entry.
+            continue
         year = result["movie"]["year"] or "Unknown Year"
         title = result["movie"]["title"]
         score = int(result["score"])
@@ -97,6 +108,9 @@ def prompt_best_match(title: str, url: str) -> str | None:
         choice = (f"{title} ({year}) [score: {score}]", imdb_id)
         hint = f"https://www.imdb.com/title/{imdb_id}/"
         choices_hints[choice] = hint
+
+    if not choices_hints:
+        return
     choices_hints[("[ Skip ]", None)] = None
     questions = [
         inquirer.List(
@@ -113,4 +127,4 @@ def prompt_best_match(title: str, url: str) -> str | None:
 
 if __name__ == "__main__":
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-    lambda_handler(None, None)
+    manual_review()
