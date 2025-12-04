@@ -52,6 +52,8 @@ class SearchRoute:
 
     def by_text(self, text: str, fields="title"):
         url = self.base_url + "/movie"
+        # NB double quotes doesnt seem to do anything.
+        # We think it does exact match, but it doesn't. Eg Tron -> Tron Legacy etc.
         params = {"query": '"%s"' % text, "fields": fields}
         response = self.session.get(url, params=params)
         response.raise_for_status()

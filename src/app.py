@@ -1,3 +1,4 @@
+import argparse
 import json
 import logging
 import os
@@ -85,7 +86,7 @@ def manual_review():
             )
 
 
-def prompt_best_match(title: str, url: str) -> str | None:
+def prompt_best_match(title: str, url: str = "") -> str | None:
     # Interactive function that takes a film title, searches trakt and
     # prompts the user for best match.
 
@@ -94,17 +95,19 @@ def prompt_best_match(title: str, url: str) -> str | None:
     results = trakt.search.by_text(title)
 
     print(f"\nSelect best match for '{title}'")
-    print(f"{url}")
+    if url:
+        print(f"{url}")
 
     choices_hints = {}
     for result in results:
-        if not result["movie"]["ids"]["imdb"]:
+        try:
+            imdb_id = result["movie"]["ids"]["imdb"]
+        except KeyError:
             # If there's no imdb then it's probably a low quality entry.
             continue
-        year = result["movie"]["year"] or "Unknown Year"
+        year = result["movie"].get("year", "Unknown Year")
         title = result["movie"]["title"]
         score = int(result["score"])
-        imdb_id = result["movie"]["ids"]["imdb"]
         choice = (f"{title} ({year}) [score: {score}]", imdb_id)
         hint = f"https://www.imdb.com/title/{imdb_id}/"
         choices_hints[choice] = hint
