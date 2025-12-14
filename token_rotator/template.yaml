@@ -1,13 +1,13 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: An AWS Serverless Application Model template describing your function.
+Description: A service to rotate trakt tokens stored in AWS Secrets.
 Resources:
   TraktTokenRotator:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../src/
+      CodeUri: src
       Handler: lambda_function.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.13
       Timeout: 3
       Policies:
         - Statement:
@@ -32,3 +32,10 @@ Resources:
         ApplyOn: None
       RuntimeManagementConfig:
         UpdateRuntimeOn: Auto
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    DependsOn: TraktTokenRotator
+    Properties:
+      FunctionName: "arn:aws:lambda:eu-west-2:680611375585:function:good-films-token-rotator-TraktTokenRotator-6zVse1O9X1Ai"
+      Action: lambda:InvokeFunction
+      Principal: 'secretsmanager.amazonaws.com'

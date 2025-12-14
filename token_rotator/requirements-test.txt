@@ -1,0 +1,6 @@
+# boto3 is only required for local development.
+boto3
+boto3-stubs[secretsmanager]
+pytest
+pytest-mock
+coverage
