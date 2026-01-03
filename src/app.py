@@ -130,4 +130,33 @@ def prompt_best_match(title: str, url: str = "") -> str | None:
 
 if __name__ == "__main__":
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-    manual_review()
+
+    # Move this boilerplate somewhere? Global?
+    secrets = get_secret("TraktAPI")
+    trakt = trakt_api.TraktAPI(secrets["CLIENT_ID"], secrets["ACCESS_TOKEN"])
+
+    user_id = secrets["USER_ID"]
+    list_id = secrets["LIST_ID"]
+    api_list = trakt.list(user_id, list_id)
+
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="command")
+    process_parser = subparsers.add_parser(
+        "process", help="Manually review the films in an AWS queue."
+    )
+    process_parser.add_argument("--aws_queue", default=MANUAL_PROCESSING_QUEUE_URL)
+    add_parser = subparsers.add_parser("add")
+    add_parser.add_argument("--title", required=True)
+
+    args = parser.parse_args()
+
+    # There's a tidier way to do all this. We want to figure out a list
+    # of films to add. That list either comes from SQS (after review) or
+    # from the command line (a list of one) So build that list (of imdb
+    # ids) and then add them all at the end.
+    if args.command == "process":
+        manual_review()
+    elif args.command == "add":
+        imdb_id = prompt_best_match(args.title)
+        if imdb_id:
+            api_list.add([imdb_id])
