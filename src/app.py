@@ -78,7 +78,7 @@ def manual_review():
                 logger.warning(f"Couldn't extract film review from {data}")
                 film = None
             if film:
-                imdb_id = prompt_best_match(film.title, film.url)
+                imdb_id = prompt_best_match(title=film.title)
                 if imdb_id:
                     api_list.add([imdb_id])
             sqs.delete_message(
@@ -86,18 +86,17 @@ def manual_review():
             )
 
 
-def prompt_best_match(title: str, url: str = "") -> str | None:
-    # Interactive function that takes a film title, searches trakt and
+def prompt_best_match(title: str = "", imdb_id: str = "") -> str | None:
+    # Interactive function that takes a film title or imdb_id, searches trakt and
     # prompts the user for best match.
-
     secrets = get_secret("TraktAPI")
     trakt = trakt_api.TraktAPI(secrets["CLIENT_ID"], secrets["ACCESS_TOKEN"])
-    results = trakt.search.by_text(title)
-
-    print(f"\nSelect best match for '{title}'")
-    if url:
-        print(f"{url}")
-
+    if title:
+        results = trakt.search.by_text(title)
+    elif imdb_id:
+        results = trakt.search.by_id(imdb_id)
+    else:
+        results = []
     choices_hints = {}
     for result in results:
         try:
@@ -113,7 +112,11 @@ def prompt_best_match(title: str, url: str = "") -> str | None:
         choices_hints[choice] = hint
 
     if not choices_hints:
+        print(f'No matches for "{title or imdb_id}"')
         return
+
+    print(f"\nSelect best match for '{title or imdb_id}'")
+
     choices_hints[("[ Skip ]", None)] = None
     questions = [
         inquirer.List(
@@ -146,7 +149,9 @@ if __name__ == "__main__":
     )
     process_parser.add_argument("--aws_queue", default=MANUAL_PROCESSING_QUEUE_URL)
     add_parser = subparsers.add_parser("add")
-    add_parser.add_argument("--title", required=True)
+    group = add_parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--title")
+    group.add_argument("--imdb_id")
 
     args = parser.parse_args()
 
@@ -157,6 +162,9 @@ if __name__ == "__main__":
     if args.command == "process":
         manual_review()
     elif args.command == "add":
-        imdb_id = prompt_best_match(args.title)
+        if args.imdb_id:
+            imdb_id = prompt_best_match(imdb_id=args.imdb_id)
+        else:
+            imdb_id = prompt_best_match(title=args.title)
         if imdb_id:
             api_list.add([imdb_id])
