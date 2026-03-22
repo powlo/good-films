@@ -142,6 +142,10 @@ def lambda_handler(event, context):
                 current_version = version
                 break
 
+        if not current_version:
+            logger.error('finishSecret: Could not find a current version of the secret.')
+            return
+
         client.update_secret_version_stage(
             SecretId=arn,
             VersionStage="AWSCURRENT",
