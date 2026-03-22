@@ -10,6 +10,7 @@ import boto3
 import inquirer
 
 import guardian_api
+from guardian_api import Article
 import trakt_api
 from aws_utils import get_parameter, get_secret, put_parameter
 
@@ -21,11 +22,6 @@ sqs = boto3.client("sqs")
 MANUAL_PROCESSING_QUEUE_URL = os.environ["MANUAL_PROCESSING_QUEUE_URL"]
 
 
-@dataclass
-class FilmReview:
-    title: str
-    url: str
-    imdb_id: str
 
 
 def lambda_handler(event, context):
@@ -36,35 +32,30 @@ def lambda_handler(event, context):
         last_success = input(f"From Date ({last_success}): ")
     from_date = datetime.strptime(last_success, "%Y-%m-%d")
 
-    films = []
+    articles:list[Article] = []
     for article in guardian_api.get_articles(from_date):
-        logger.info(f'"{article["webTitle"]}" ({article["webUrl"]})')
-        film = guardian_api.parse(article)
-        films.append(film)
+        logger.info(f'"{article.title}" ({article.url})')
+        articles.append(article)
 
-    imdb_ids = [f["imdb_id"] for f in films if f["imdb_id"]]
+    imdb_ids = [a.imdb_id for a in articles if a.imdb_id]
 
-    films_no_id = [f for f in films if not f["imdb_id"]]
-    for film in films_no_id:
-        logger.warning(f'No imdb id found for "{film["title"]}"')
+    articles_no_id = [a for a in articles if not a.imdb_id]
+    for article in articles_no_id:
+        logger.warning(f'No imdb id found for "{article.title}')
         sqs.send_message(
-            QueueUrl=MANUAL_PROCESSING_QUEUE_URL, MessageBody=json.dumps(film)
+            QueueUrl=MANUAL_PROCESSING_QUEUE_URL, MessageBody=json.dumps(article.to_dict())
         )
+    # Bundle the ids so that they can be sent en masse
     trakt_api.update_list(imdb_ids)
 
     # Update the "LastSuccess" parameter ready for the next run.
+    # TODO: Split guardian and trakt into two lambdas
     now = datetime.now()
     put_parameter("GoodFilms_LastSuccess", now.strftime("%Y-%m-%d"))
 
 
-def manual_review():
+def get_articles_from_sqs():
     # To be run by a human to review entries on an SQS queue.
-    secrets = get_secret("TraktAPI")
-    trakt = trakt_api.TraktAPI(secrets["CLIENT_ID"], secrets["ACCESS_TOKEN"])
-    user_id = secrets["USER_ID"]
-    list_id = secrets["LIST_ID"]
-    api_list = trakt.list(user_id, list_id)
-
     while True:
         response = sqs.receive_message(QueueUrl=MANUAL_PROCESSING_QUEUE_URL)
         if not response.get("Messages"):
@@ -73,14 +64,10 @@ def manual_review():
         for msg in response["Messages"]:
             data = json.loads(msg["Body"])
             try:
-                film = FilmReview(**data)
+                yield Article(**data)
             except TypeError:
-                logger.warning(f"Couldn't extract film review from {data}")
-                film = None
-            if film:
-                imdb_id = prompt_best_match(title=film.title)
-                if imdb_id:
-                    api_list.add([imdb_id])
+                logger.warning(f"Couldn't extract article from {data}")
+
             sqs.delete_message(
                 QueueUrl=MANUAL_PROCESSING_QUEUE_URL, ReceiptHandle=msg["ReceiptHandle"]
             )
@@ -160,9 +147,14 @@ if __name__ == "__main__":
     # from the command line (a list of one) So build that list (of imdb
     # ids) and then add them all at the end.
     if args.command == "process":
-        manual_review()
+        for article in get_articles_from_sqs():
+            imdb_id = prompt_best_match(title=article.title)
+            if imdb_id:
+                api_list.add([imdb_id])
+
     elif args.command == "add":
         if args.imdb_id:
+            results = trakt.search.by_id(args.imdb_id)
             imdb_id = prompt_best_match(imdb_id=args.imdb_id)
         else:
             imdb_id = prompt_best_match(title=args.title)

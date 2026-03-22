@@ -1,3 +1,6 @@
 requests
 boto3
+
+# Requirements for CLI:
+boto3[crt]
 inquirer

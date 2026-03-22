@@ -1,6 +1,8 @@
 from datetime import datetime
+import json
 from unittest import TestCase, mock
 
+from guardian_api import Article
 from mock_functions import mock_get
 
 with mock.patch.dict(
@@ -57,15 +59,11 @@ class TestLambdaHandler(TestCase):
     @mock.patch("app.guardian_api.get_articles")
     def test_send_to_queue(self, mock_get_articles, mock_sqs):
         # An article with no imdb reference
-        mock_film = {
-            "webTitle": "a film review",
-            "webUrl": "www.aurl.com",
-            "references": [],
-        }
-        mock_get_articles.return_value = [mock_film]
+        mock_article = Article(title="a film", url="www.aurl.com", imdb_id=None)
+        mock_get_articles.return_value = [mock_article]
         app.lambda_handler(None, None)
 
         # The film details are sent to an SQS queue.
         mock_sqs.send_message.assert_called_once()
         message_body = mock_sqs.send_message.call_args.kwargs["MessageBody"]
-        self.assertTrue(mock_film, message_body)
+        self.assertEqual(mock_article.to_dict(), json.loads(message_body))

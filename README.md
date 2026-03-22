@@ -15,3 +15,11 @@ Access and refresh tokens for Trakt need to be rotated. These tokens are stored 
 In the event that the refresh token is stale the tokens will have to be manually regenerated.
 
 To do this run `python create_trakt_tokens.py` and follow on screen instructions.
+
+### Token Rotator.
+
+Code for the token rotator exists within the token_rotator directory and should be built and deployed independently of the main repository code with it's own virtual environment.
+
+cd token_rotator
+sam build - .aws/template.yaml
+sam deploy --guided
