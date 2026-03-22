@@ -20,9 +20,7 @@ logger.setLevel(logging.INFO)
 sqs = boto3.client("sqs")
 
 MANUAL_PROCESSING_QUEUE_URL = os.environ["MANUAL_PROCESSING_QUEUE_URL"]
-
-
-
+TRAKT_QUEUE_URL = os.environ["TRAKT_QUEUE_URL"]
 
 def lambda_handler(event, context):
     # The date the last time the script ran is stored in a parameter.
@@ -37,19 +35,16 @@ def lambda_handler(event, context):
         logger.info(f'"{article.title}" ({article.url})')
         articles.append(article)
 
-    imdb_ids = [a.imdb_id for a in articles if a.imdb_id]
-
-    articles_no_id = [a for a in articles if not a.imdb_id]
-    for article in articles_no_id:
-        logger.warning(f'No imdb id found for "{article.title}')
-        sqs.send_message(
-            QueueUrl=MANUAL_PROCESSING_QUEUE_URL, MessageBody=json.dumps(article.to_dict())
-        )
-    # Bundle the ids so that they can be sent en masse
-    trakt_api.update_list(imdb_ids)
-
-    # Update the "LastSuccess" parameter ready for the next run.
-    # TODO: Split guardian and trakt into two lambdas
+    for article in articles:
+        if article.imdb_id:
+            sqs.send_message(
+                QueueUrl=TRAKT_QUEUE_URL, MessageBody=json.dumps(article.to_dict())
+            )      
+        else:
+            logger.warning(f'No imdb id found for "{article.title}')
+            sqs.send_message(
+                QueueUrl=MANUAL_PROCESSING_QUEUE_URL, MessageBody=json.dumps(article.to_dict())
+            )
     now = datetime.now()
     put_parameter("GoodFilms_LastSuccess", now.strftime("%Y-%m-%d"))
 

@@ -1,8 +1,8 @@
 version = 0.1
 [default.deploy.parameters]
-stack_name = "good-films"
+stack_name = "good-films-guardian"
 resolve_s3 = true
-s3_prefix = "good-films"
+s3_prefix = "good-films-guardian"
 region = "eu-west-2"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
