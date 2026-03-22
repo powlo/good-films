@@ -20,7 +20,7 @@ logger.setLevel(logging.INFO)
 sqs = boto3.client("sqs")
 
 MANUAL_PROCESSING_QUEUE_URL = os.environ["MANUAL_PROCESSING_QUEUE_URL"]
-TRAKT_QUEUE_URL = os.environ["TRAKT_QUEUE_URL"]
+GUARDIAN_QUEUE_URL = os.environ["GUARDIAN_QUEUE_URL"]
 
 def lambda_handler(event, context):
     # The date the last time the script ran is stored in a parameter.
@@ -38,8 +38,8 @@ def lambda_handler(event, context):
     for article in articles:
         if article.imdb_id:
             sqs.send_message(
-                QueueUrl=TRAKT_QUEUE_URL, MessageBody=json.dumps(article.to_dict())
-            )      
+                QueueUrl=GUARDIAN_QUEUE_URL, MessageBody=json.dumps(article.to_dict())
+            )
         else:
             logger.warning(f'No imdb id found for "{article.title}')
             sqs.send_message(
