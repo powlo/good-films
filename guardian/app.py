@@ -1,12 +1,12 @@
 import logging
 import os
-from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Generator
+from typing import Iterator
 
 import boto3
 import requests
-from aws_utils import get_parameter, get_secret, put_parameter
+
+from .aws_utils import get_parameter, get_secret, put_parameter
 
 BASE_URL = "https://content.guardianapis.com"
 SEARCH_URL = BASE_URL + "/search"
@@ -19,7 +19,7 @@ logger.setLevel(logging.INFO)
 sqs = boto3.client("sqs")
 
 
-def get_articles(from_date: datetime) -> Generator[dict]:
+def get_articles(from_date: datetime) -> Iterator[dict]:
     current_page = 1
     pages = 1
     from_date_string = from_date.strftime("%Y-%m-%d")
