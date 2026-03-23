@@ -6,20 +6,41 @@ Description: >
   website for favourable reviews and puts them into a trakt list.
 
 Resources:
-  LambdaFunction:
+  GuardianLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
+      CodeUri: guardian/
       Handler: app.lambda_handler
       Runtime: python3.10
       Timeout: 30
       Environment:
         Variables:
-          MANUAL_PROCESSING_QUEUE_URL: !Ref ManualProcessingQueue
+          GUARDIAN_ARTICLE_QUEUE_URL: !Ref GuardianArticleQueue
       Policies:
         - SQSSendMessagePolicy:
             QueueName:
-              !GetAtt ManualProcessingQueue.QueueName
+              !GetAtt GuardianArticleQueue.QueueName
+
+  TraktLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: trakt/
+      Handler: app.lambda_handler
+      Runtime: python3.10
+      Timeout: 30
+      Events:
+        SQSQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt GuardianArticleQueue.Arn
+      Environment:
+        Variables:
+          UNPROCESSABLE_QUEUE_URL: !Ref UnprocessableQueue
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName:
+              !GetAtt UnprocessableQueue.QueueName
+
 
   ScheduledRule: 
     Type: AWS::Events::Rule
@@ -28,30 +49,41 @@ Resources:
       ScheduleExpression: "cron(0 0 * * ? *)"
       State: "ENABLED"
       Targets: 
-        - Arn: !GetAtt LambdaFunction.Arn
+        - Arn: !GetAtt GuardianLambdaFunction.Arn
           Id:
-            Ref: "LambdaFunction"
+            Ref: "GuardianLambdaFunction"
 
   InvokeLambdaPermission: 
     Type: AWS::Lambda::Permission
     Properties: 
-      FunctionName: !GetAtt LambdaFunction.Arn
+      FunctionName: !GetAtt GuardianLambdaFunction.Arn
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
       SourceArn: !GetAtt ScheduledRule.Arn
 
-  ManualProcessingQueue:
+  UnprocessableQueue:
     Type: "AWS::SQS::Queue"
     Properties:
       MessageRetentionPeriod: 604800 # 7 days.
-      QueueName: "GoodFilms--RequireManualProcessing"
+      QueueName: "GoodFilms--UnprocessableGuardianArticles"
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+
+  GuardianArticleQueue:
+    Type: "AWS::SQS::Queue"
+    Properties:
+      MessageRetentionPeriod: 604800 # 7 days.
+      QueueName: "GoodFilms--GuardianArticles"
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
 
 Outputs:
-  LambdaFunction:
-    Description: "Guardian Films Lambda Function ARN"
-    Value: !GetAtt LambdaFunction.Arn
+  GuardianLambdaFunction:
+    Description: "Guardian Lambda Function ARN"
+    Value: !GetAtt GuardianLambdaFunction.Arn
+  TraktLambdaFunction:
+    Description: "Trakt Lambda Function ARN"
+    Value: !GetAtt TraktLambdaFunction.Arn
   LambdaFunctionIamRole:
     Description: "Implicit IAM Role created for Guardian Films function"
-    Value: !GetAtt LambdaFunctionRole.Arn
+    Value: !GetAtt GuardianLambdaFunction.Arn

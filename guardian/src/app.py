@@ -1,157 +1,58 @@
-import argparse
-import json
 import logging
 import os
-import sys
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
+from typing import Generator
 
 import boto3
-import inquirer
-
-import guardian_api
-from guardian_api import Article
-import trakt_api
+import requests
 from aws_utils import get_parameter, get_secret, put_parameter
+
+BASE_URL = "https://content.guardianapis.com"
+SEARCH_URL = BASE_URL + "/search"
+GUARDIAN_ARTICLE_QUEUE_URL = os.environ["GUARDIAN_ARTICLE_QUEUE_URL"]
+DATE_FORMAT = "%Y-%m-%d"
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 sqs = boto3.client("sqs")
 
-MANUAL_PROCESSING_QUEUE_URL = os.environ["MANUAL_PROCESSING_QUEUE_URL"]
-GUARDIAN_QUEUE_URL = os.environ["GUARDIAN_QUEUE_URL"]
+
+def get_articles(from_date: datetime) -> Generator[dict]:
+    current_page = 1
+    pages = 1
+    from_date_string = from_date.strftime("%Y-%m-%d")
+    while current_page <= pages:
+        params = {
+            "api-key": get_secret("GuardianAPI")["API_KEY"],
+            "star-rating": "4|5",
+            "section": "film",
+            "show-fields": ["byline", "starRating"],
+            "show-references": "imdb",
+            "show-tags": "contributor",
+            "from-date": from_date_string,
+            "page": current_page,
+        }
+        # gets raw articles from guardian.
+        response = requests.get(SEARCH_URL, params=params)
+        json_data = response.json()
+        pages = json_data["response"]["pages"]
+        results = json_data["response"]["results"]
+        for data in results:
+            yield data
+        current_page += 1
+
 
 def lambda_handler(event, context):
-    # The date the last time the script ran is stored in a parameter.
+    # The date the last time the script successfully ran is stored in a parameter.
     # So days are not lost if the script fails for any reason.
     last_success = get_parameter("GoodFilms_LastSuccess")
     if not os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
         last_success = input(f"From Date ({last_success}): ")
-    from_date = datetime.strptime(last_success, "%Y-%m-%d")
+    from_date = datetime.strptime(last_success, DATE_FORMAT)
 
-    articles:list[Article] = []
-    for article in guardian_api.get_articles(from_date):
-        logger.info(f'"{article.title}" ({article.url})')
-        articles.append(article)
-
-    for article in articles:
-        if article.imdb_id:
-            sqs.send_message(
-                QueueUrl=GUARDIAN_QUEUE_URL, MessageBody=json.dumps(article.to_dict())
-            )
-        else:
-            logger.warning(f'No imdb id found for "{article.title}')
-            sqs.send_message(
-                QueueUrl=MANUAL_PROCESSING_QUEUE_URL, MessageBody=json.dumps(article.to_dict())
-            )
+    for data in get_articles(from_date):
+        sqs.send_message(QueueUrl=GUARDIAN_ARTICLE_QUEUE_URL, MessageBody=data)
     now = datetime.now()
-    put_parameter("GoodFilms_LastSuccess", now.strftime("%Y-%m-%d"))
-
-
-def get_articles_from_sqs():
-    # To be run by a human to review entries on an SQS queue.
-    while True:
-        response = sqs.receive_message(QueueUrl=MANUAL_PROCESSING_QUEUE_URL)
-        if not response.get("Messages"):
-            logger.info("No more films to process.")
-            break
-        for msg in response["Messages"]:
-            data = json.loads(msg["Body"])
-            try:
-                yield Article(**data)
-            except TypeError:
-                logger.warning(f"Couldn't extract article from {data}")
-
-            sqs.delete_message(
-                QueueUrl=MANUAL_PROCESSING_QUEUE_URL, ReceiptHandle=msg["ReceiptHandle"]
-            )
-
-
-def prompt_best_match(title: str = "", imdb_id: str = "") -> str | None:
-    # Interactive function that takes a film title or imdb_id, searches trakt and
-    # prompts the user for best match.
-    secrets = get_secret("TraktAPI")
-    trakt = trakt_api.TraktAPI(secrets["CLIENT_ID"], secrets["ACCESS_TOKEN"])
-    if title:
-        results = trakt.search.by_text(title)
-    elif imdb_id:
-        results = trakt.search.by_id(imdb_id)
-    else:
-        results = []
-    choices_hints = {}
-    for result in results:
-        try:
-            imdb_id = result["movie"]["ids"]["imdb"]
-        except KeyError:
-            # If there's no imdb then it's probably a low quality entry.
-            continue
-        year = result["movie"].get("year", "Unknown Year")
-        title = result["movie"]["title"]
-        score = int(result["score"])
-        choice = (f"{title} ({year}) [score: {score}]", imdb_id)
-        hint = f"https://www.imdb.com/title/{imdb_id}/"
-        choices_hints[choice] = hint
-
-    if not choices_hints:
-        print(f'No matches for "{title or imdb_id}"')
-        return
-
-    print(f"\nSelect best match for '{title or imdb_id}'")
-
-    choices_hints[("[ Skip ]", None)] = None
-    questions = [
-        inquirer.List(
-            "imdb_id",
-            message="Select matching film:",
-            choices=choices_hints.keys(),
-            hints=choices_hints,
-        ),
-    ]
-    answer = inquirer.prompt(questions)
-    if answer:
-        return answer["imdb_id"]
-
-
-if __name__ == "__main__":
-    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-
-    # Move this boilerplate somewhere? Global?
-    secrets = get_secret("TraktAPI")
-    trakt = trakt_api.TraktAPI(secrets["CLIENT_ID"], secrets["ACCESS_TOKEN"])
-
-    user_id = secrets["USER_ID"]
-    list_id = secrets["LIST_ID"]
-    api_list = trakt.list(user_id, list_id)
-
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(dest="command")
-    process_parser = subparsers.add_parser(
-        "process", help="Manually review the films in an AWS queue."
-    )
-    process_parser.add_argument("--aws_queue", default=MANUAL_PROCESSING_QUEUE_URL)
-    add_parser = subparsers.add_parser("add")
-    group = add_parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--title")
-    group.add_argument("--imdb_id")
-
-    args = parser.parse_args()
-
-    # There's a tidier way to do all this. We want to figure out a list
-    # of films to add. That list either comes from SQS (after review) or
-    # from the command line (a list of one) So build that list (of imdb
-    # ids) and then add them all at the end.
-    if args.command == "process":
-        for article in get_articles_from_sqs():
-            imdb_id = prompt_best_match(title=article.title)
-            if imdb_id:
-                api_list.add([imdb_id])
-
-    elif args.command == "add":
-        if args.imdb_id:
-            results = trakt.search.by_id(args.imdb_id)
-            imdb_id = prompt_best_match(imdb_id=args.imdb_id)
-        else:
-            imdb_id = prompt_best_match(title=args.title)
-        if imdb_id:
-            api_list.add([imdb_id])
+    put_parameter("GoodFilms_LastSuccess", now.strftime(DATE_FORMAT))

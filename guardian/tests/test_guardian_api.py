@@ -2,7 +2,7 @@ import unittest
 from datetime import datetime
 from unittest import mock
 
-import guardian_api
+from guardian import app
 
 
 @mock.patch("guardian_api.get_secret", lambda _: {"API_KEY": "123"})
@@ -20,13 +20,8 @@ class TestGuardianAPI(unittest.TestCase):
                 "pages": 1,
             }
         }
-        expected_article = guardian_api.Article(
-            title="a film",
-            url="www.aurl.com",
-            imdb_id="imdb/tt123456"
-        )
         yesterday = datetime(2024, 2, 29)
-        articles = list(guardian_api.get_articles(yesterday))
+        articles = list(app.get_articles(yesterday))
         self.assertEqual(1, len(list(articles)))
         article = articles[0]
 
