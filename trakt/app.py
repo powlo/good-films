@@ -1,6 +1,6 @@
+import json
 import logging
-import os
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 
 import boto3
 import trakt_api
@@ -10,26 +10,38 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-UNPROCESSABLE_QUEUE_URL = os.environ["UNPROCESSABLE_QUEUE_URL"]
+@dataclass
+class Reference:
+    type: str
+    id: str
 
 
 @dataclass
 class Article:
     web_title: str
     web_url: str
-    references: list
+    references: list[Reference]
 
+    def __post_init__(self):
+        if not isinstance(self.references, list):
+            raise TypeError("items must be a list.")
 
-def get_title(article: Article) -> str:
-    seperator = " review \u2013 "  # u2013 is an n-dash
-    return article.web_title.split(seperator)[0]
+        if len(self.references) == 0:
+            raise ValueError("items must be a non-empty list.")
 
+        if not any([r.type == "imdb" for r in self.references]):
+            raise ValueError("No imdb references found.")
 
-def get_imdb_id(article: Article):
-    for ref in article.references:
-        if ref["type"] == "imdb":
-            id = ref["id"].split("/")[-1]
-            return id
+    @property
+    def title(self) -> str:
+        seperator = " review \u2013 "  # u2013 is an n-dash
+        return self.web_title.split(seperator)[0]
+
+    @property
+    def imdb_id(self):
+        imdb_references = [r for r in self.references if r.type == "imdb"]
+        first = imdb_references[0]
+        return first.id.split("/")[-1]
 
 
 def lambda_handler(event, context):
@@ -42,31 +54,15 @@ def lambda_handler(event, context):
         list_id = secrets["LIST_ID"]
         api = trakt_api.TraktAPI(secrets["CLIENT_ID"], secrets["ACCESS_TOKEN"])
 
-        body = message["body"]
-        try:
-            article = Article(
-                web_title=body["webTitle"],
-                web_url=body["webUrl"],
-                references=body["references"],
-            )
-        except Exception as e:
-            # If we can't form a proper article, then probably best to ignore.
-            logger.error(e)
-            continue
-        imdb_id = get_imdb_id(article)
-
-        if not imdb_id:
-            logger.warning(
-                f'No imdb id for for "{article.web_title}" ({article.web_url})'
-            )
-            sqs.send_message(
-                QueueUrl=UNPROCESSABLE_QUEUE_URL, MessageBody=asdict(article)
-            )
-            continue
+        body = json.loads(message["body"])
+        article = Article(
+            web_title=body["webTitle"],
+            web_url=body["webUrl"],
+            references=body["references"],
+        )
         trakt_list = api.list(user_id, list_id)
-        trakt_list.add([imdb_id])
-        title = get_title(article)
-        logger.info(f'Added "{title}" to trakt list.')
+        trakt_list.add([article.imdb_id])
+        logger.info(f'Added "{article.title}" to trakt list.')
 
 
 def excess_hander():
