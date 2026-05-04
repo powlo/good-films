@@ -48,12 +48,41 @@ Resources:
       Policies:
         - AWSSecretsManagerGetSecretValuePolicy:
             SecretArn: "arn:aws:secretsmanager:eu-west-2:680611375585:secret:TraktAPI-BFbWUe"
-
+  TraktTokenRotatorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.13
+      Timeout: 3
+      Policies:
+        - Statement:
+            - Sid: AllowLambdaToStoreAndRetrieveSecrets
+              Effect: Allow
+              Action:
+                - secretsmanager:DescribeSecret
+                - secretsmanager:GetSecretValue
+                - secretsmanager:PutSecretValue
+                - secretsmanager:UpdateSecretVersionStage
+              Resource: >-
+                arn:aws:secretsmanager:eu-west-2:680611375585:secret:TraktAPI-BFbWUe
+            - Sid: RecordProgressInLogsForEasierDebugging
+              Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: '*'
+      RecursiveLoop: Terminate
+      SnapStart:
+        ApplyOn: None
+      RuntimeManagementConfig:
+        UpdateRuntimeOn: Auto
 
   ScheduledRule: 
     Type: AWS::Events::Rule
     Properties: 
-      Description: "ScheduledRule"
+      Description: "Invokes the Guardian article scraper every day."
       ScheduleExpression: "cron(0 0 * * ? *)"
       State: "ENABLED"
       Targets: 
@@ -61,13 +90,22 @@ Resources:
           Id:
             Ref: "GuardianLambdaFunction"
 
-  InvokeLambdaPermission: 
+  GuardianLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties: 
       FunctionName: !GetAtt GuardianLambdaFunction.Arn
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
       SourceArn: !GetAtt ScheduledRule.Arn
+
+  TokenRotatorPermission:
+    # Allows SecretsManager to auto rotate the secret
+    Type: AWS::Lambda::Permission
+    DependsOn: TraktTokenRotator
+    Properties:
+      FunctionName: !GetAtt TraktTokenRotatorFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: 'secretsmanager.amazonaws.com'
 
   GuardianArticleDLQ:
     Type: "AWS::SQS::Queue"
@@ -85,7 +123,6 @@ Resources:
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt GuardianArticleDLQ.Arn
         maxReceiveCount: 3
-
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
 

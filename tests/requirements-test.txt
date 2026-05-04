@@ -1,2 +1,5 @@
-pytest
+boto3
+boto3-stubs[secretsmanager]
 coverage
+pytest
+pytest-mock
