@@ -20,7 +20,17 @@ Resources:
         - SQSSendMessagePolicy:
             QueueName:
               !GetAtt GuardianArticleQueue.QueueName
-
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: "arn:aws:secretsmanager:eu-west-2:680611375585:secret:GuardianAPI-LnBR6M"
+        - SSMParameterReadPolicy:
+            ParameterName: "GoodFilms_LastSuccess"
+        - Statement:
+            - Sid: SSMParameterWritePolicy
+              Effect: Allow
+              Action:
+                - ssm:PutParameter
+              Resource: >-
+                arn:aws:ssm:eu-west-2:680611375585:parameter/GoodFilms_LastSuccess
   TraktLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -28,18 +38,16 @@ Resources:
       Handler: app.lambda_handler
       Runtime: python3.10
       Timeout: 30
+      ReservedConcurrentExecutions: 1
       Events:
         SQSQueueEvent:
           Type: SQS
           Properties:
             Queue: !GetAtt GuardianArticleQueue.Arn
-      Environment:
-        Variables:
-          UNPROCESSABLE_QUEUE_URL: !Ref UnprocessableQueue
+            BatchSize: 1
       Policies:
-        - SQSSendMessagePolicy:
-            QueueName:
-              !GetAtt UnprocessableQueue.QueueName
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: "arn:aws:secretsmanager:eu-west-2:680611375585:secret:TraktAPI-BFbWUe"
 
 
   ScheduledRule: 
@@ -61,11 +69,11 @@ Resources:
       Principal: "events.amazonaws.com"
       SourceArn: !GetAtt ScheduledRule.Arn
 
-  UnprocessableQueue:
+  GuardianArticleDLQ:
     Type: "AWS::SQS::Queue"
     Properties:
       MessageRetentionPeriod: 604800 # 7 days.
-      QueueName: "GoodFilms--UnprocessableGuardianArticles"
+      QueueName: "GoodFilms--GuardianArticleDLQ"
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
 
@@ -74,6 +82,10 @@ Resources:
     Properties:
       MessageRetentionPeriod: 604800 # 7 days.
       QueueName: "GoodFilms--GuardianArticles"
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt GuardianArticleDLQ.Arn
+        maxReceiveCount: 3
+
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
 
