@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 import requests
 
-from aws_utils import get_secret, put_secret
+from guardian.aws_utils import get_secret, put_secret
 
 # A script to mimic the "device" authentication flow. The device is actually
 # the lambda functions that will make API calls and rotate the secrets.
