@@ -1,12 +1,14 @@
-from datetime import datetime
 import json
+from datetime import datetime
 from unittest import TestCase, mock
 
-from guardian_api import Article
-from mock_functions import mock_get
+from tests.mock_functions import mock_get
 
 with mock.patch.dict(
-    "os.environ", {"MANUAL_PROCESSING_QUEUE_URL": "https://atestqueue"}
+    "os.environ",
+    {
+        "GUARDIAN_ARTICLE_QUEUE_URL": "https://api.trakt.tv/users/auser/lists/alist/items"
+    },
 ):
     import app
 
@@ -14,33 +16,20 @@ with mock.patch.dict(
 @mock.patch.dict("os.environ", {"AWS_LAMBDA_FUNCTION_NAME": "LambdaFunctionName"})
 class TestLambdaHandler(TestCase):
 
-    @mock.patch("guardian_api.get_secret", lambda _: {"API_KEY": "123"})
-    @mock.patch(
-        "trakt_api.get_secret",
-        lambda _: {
-            "ACCESS_TOKEN": "123",
-            "CLIENT_ID": "abc123",
-            "USER_ID": "auser",
-            "LIST_ID": "alist",
-            "MAX_LIST_SIZE": "5",
-        },
-    )
+    @mock.patch("app.get_secret", lambda _: {"API_KEY": "123"})
     @mock.patch("app.get_parameter", lambda _: "2024-2-29")
     @mock.patch("app.put_parameter", mock.MagicMock)
     @mock.patch("requests.get", mock.MagicMock(side_effect=mock_get))
-    @mock.patch("trakt_api.requests.Session")
-    def test_film_posted_to_trakt(self, mock_session):
-        mock_session.return_value.get = mock.MagicMock(side_effect=mock_get)
-        mock_post = mock_session.return_value.post
+    @mock.patch("app.sqs")
+    def test_film_posted_to_sqs(self, mock_sqs):
         app.lambda_handler(None, None)
-        self.assertTrue(mock_post.called)
-        mock_post.assert_called_once_with(
-            "https://api.trakt.tv/users/auser/lists/alist/items",
-            data='{"movies": [{"ids": {"imdb": "tt123456"}}]}',
+        self.assertTrue(mock_sqs.send_message.called)
+        mock_sqs.send_message.assert_called_once_with(
+            QueueUrl="https://api.trakt.tv/users/auser/lists/alist/items",
+            MessageBody='{"webTitle": "a film review", "webUrl": "www.aurl.com", "references": [{"type": "imdb", "id": "imdb/tt123456"}]}',
         )
 
-    @mock.patch("app.trakt_api.update_list", mock.MagicMock)
-    @mock.patch("app.guardian_api.get_articles", mock.MagicMock(return_value=[]))
+    @mock.patch("app.get_articles", mock.MagicMock(return_value=[]))
     @mock.patch("app.get_parameter", lambda _: "2024-2-29")
     @mock.patch("app.datetime")
     @mock.patch("app.put_parameter")
@@ -53,17 +42,16 @@ class TestLambdaHandler(TestCase):
         )
 
     @mock.patch("app.get_parameter", lambda _: "2024-2-29")
-    @mock.patch("app.trakt_api.update_list", mock.MagicMock)
     @mock.patch("app.put_parameter", mock.MagicMock)
     @mock.patch("app.sqs")
-    @mock.patch("app.guardian_api.get_articles")
+    @mock.patch("app.get_articles")
     def test_send_to_queue(self, mock_get_articles, mock_sqs):
         # An article with no imdb reference
-        mock_article = Article(title="a film", url="www.aurl.com", imdb_id=None)
+        mock_article = dict(webTitle="a film", webUrl="www.aurl.com", references=None)
         mock_get_articles.return_value = [mock_article]
         app.lambda_handler(None, None)
 
         # The film details are sent to an SQS queue.
         mock_sqs.send_message.assert_called_once()
         message_body = mock_sqs.send_message.call_args.kwargs["MessageBody"]
-        self.assertEqual(mock_article.to_dict(), json.loads(message_body))
+        self.assertEqual(mock_article, json.loads(message_body))

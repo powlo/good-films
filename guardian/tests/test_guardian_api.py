@@ -2,11 +2,11 @@ import unittest
 from datetime import datetime
 from unittest import mock
 
-from guardian import app
+import app
 
 
-@mock.patch("guardian_api.get_secret", lambda _: {"API_KEY": "123"})
-@mock.patch("guardian_api.requests.get")
+@mock.patch("app.get_secret", lambda _: {"API_KEY": "123"})
+@mock.patch("app.requests.get")
 class TestGuardianAPI(unittest.TestCase):
     def test_get_articles(self, mock_get):
         article_data = {
@@ -26,6 +26,4 @@ class TestGuardianAPI(unittest.TestCase):
         article = articles[0]
 
         # TODO: Switch to dataclass and do x in y.
-        self.assertEqual(article.title, "a film")
-        self.assertEqual(article.url, "www.aurl.com")
-        self.assertEqual(article.imdb_id, "tt123456")
+        self.assertEqual(article, article_data)
