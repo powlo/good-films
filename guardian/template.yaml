@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: >
+  Serverless application that periodically scrapes guardian 
+  website for favourable reviews and puts them into a Queue.
+
+Parameters:
+  QueueArn:
+    Type: String
+  SecretArn:
+    Type: String
+  ParameterStoreArn:
+    Type: String
+
+Resources:
+  GuardianLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: app.lambda_handler
+      Runtime: python3.14
+      Timeout: 30
+      Environment:
+        Variables:
+          GUARDIAN_ARTICLE_QUEUE_URL: !Ref QueueArn
+      Policies:
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref SecretArn
+        - SSMParameterReadPolicy:
+            ParameterName: "GoodFilms_LastSuccess"
+        - Statement:
+          - Sid: SSMParameterWritePolicy
+            Effect: Allow
+            Action:
+              - ssm:PutParameter
+            Resource: !Ref ParameterStoreArn
+        - Statement:
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !Ref QueueArn
+
+      Events:
+        DailySchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: "cron(0 0 * * ? *)"
+
+Outputs:
+  GuardianLambdaFunction:
+    Description: "Guardian Lambda Function ARN"
+    Value: !GetAtt GuardianLambdaFunction.Arn
