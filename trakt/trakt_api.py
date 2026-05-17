@@ -3,8 +3,7 @@ import logging
 from typing import List
 
 import requests
-
-from .aws_utils import get_secret
+from aws_utils import get_secret
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)

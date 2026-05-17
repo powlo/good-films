@@ -10,8 +10,7 @@ from functools import cache
 
 import boto3
 import inquirer
-
-from trakt import trakt_api
+import trakt_api
 
 DLQ_URL = os.environ["DLQ_URL"]
 
@@ -115,6 +114,7 @@ if __name__ == "__main__":
             article = Article(article_data["webTitle"], article_data["webUrl"])
             print(article.web_title)
             print(article.web_url)
+            # TODO: Prompt for confirmation to add this film?
             results = trakt.search.by_text(article.film_title)
             imdb_id = prompt_best_match(results)
             if imdb_id:
