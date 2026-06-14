@@ -26,7 +26,7 @@ def get_articles(from_date: datetime) -> Iterator[dict]:
     logger.info(f"Fetching articles from {from_date_string}")
     while current_page <= pages:
         params = {
-            "api-key": get_secret("GuardianAPI")["API_KEY"],
+            "api-key": get_secret("/GoodFilms/GuardianAPI")["API_KEY"],
             "star-rating": "4|5",
             "section": "film",
             "show-fields": ["byline", "starRating"],
@@ -50,7 +50,7 @@ def get_articles(from_date: datetime) -> Iterator[dict]:
 def lambda_handler(event=None, context=None):
     # The date the last time the script successfully ran is stored in a parameter.
     # So days are not lost if the script fails for any reason.
-    last_success = get_parameter("GoodFilms_LastSuccess")
+    last_success = get_parameter("/GoodFilms/LastSuccess")
     if not os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
         last_success = input(f"From Date ({last_success}): ")
     from_date = datetime.strptime(last_success, DATE_FORMAT)
@@ -60,7 +60,7 @@ def lambda_handler(event=None, context=None):
             QueueUrl=GUARDIAN_ARTICLE_QUEUE_URL, MessageBody=json.dumps(data)
         )
     now = datetime.now()
-    put_parameter("GoodFilms_LastSuccess", now.strftime(DATE_FORMAT))
+    put_parameter("/GoodFilms/LastSuccess", now.strftime(DATE_FORMAT))
 
 
 if __name__ == "__main__":

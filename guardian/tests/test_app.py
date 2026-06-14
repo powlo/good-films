@@ -38,7 +38,7 @@ class TestLambdaHandler(TestCase):
         app.lambda_handler(None, None)
         self.assertTrue(mock_put_parameter.called)
         mock_put_parameter.assert_called_once_with(
-            "GoodFilms_LastSuccess", "2024-03-02"
+            "GoodFilms/LastSuccess", "2024-03-02"
         )
 
     @mock.patch("app.get_parameter", lambda _: "2024-2-29")

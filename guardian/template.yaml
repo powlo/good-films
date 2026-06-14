@@ -6,15 +6,15 @@ Description: >
   website for favourable reviews and puts them into a Queue.
 
 Parameters:
-  QueueArn:
+  DestinationQueueArn:
     Type: String
-  SecretArn:
+  ApiKey:
     Type: String
-  ParameterStoreArn:
+  LastSuccess:
     Type: String
 
 Resources:
-  GuardianLambdaFunction:
+  Lambda:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
@@ -23,23 +23,23 @@ Resources:
       Timeout: 30
       Environment:
         Variables:
-          GUARDIAN_ARTICLE_QUEUE_URL: !Ref QueueArn
+          GUARDIAN_ARTICLE_QUEUE_URL: !Ref DestinationQueueArn
       Policies:
         - AWSSecretsManagerGetSecretValuePolicy:
-            SecretArn: !Ref SecretArn
+            SecretArn: !Ref Secret
         - SSMParameterReadPolicy:
-            ParameterName: "GoodFilms_LastSuccess"
+            ParameterName: !Ref Parameter
         - Statement:
           - Sid: SSMParameterWritePolicy
             Effect: Allow
             Action:
               - ssm:PutParameter
-            Resource: !Ref ParameterStoreArn
+            Resource: !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${Parameter}
         - Statement:
-            - Effect: Allow
-              Action:
-                - sqs:SendMessage
-              Resource: !Ref QueueArn
+          - Effect: Allow
+            Action:
+              - sqs:SendMessage
+            Resource: !Ref DestinationQueueArn
 
       Events:
         DailySchedule:
@@ -47,7 +47,21 @@ Resources:
           Properties:
             ScheduleExpression: "cron(0 0 * * ? *)"
 
+  Secret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Use to access https://content.guardianapis.com
+      Name: /GoodFilms/GuardianAPI
+      SecretString: !Sub '{"API_KEY":"${ApiKey}"}'
+
+  Parameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /GoodFilms/LastSuccess
+      Type: String
+      Value: !Ref LastSuccess
+
 Outputs:
-  GuardianLambdaFunction:
+  LambdaArn:
     Description: "Guardian Lambda Function ARN"
-    Value: !GetAtt GuardianLambdaFunction.Arn
+    Value: !GetAtt Lambda.Arn
