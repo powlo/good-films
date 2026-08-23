@@ -45,11 +45,8 @@ class Article:
 
 
 def lambda_handler(event, context):
-    # Better to define client outside?
-    sqs = boto3.client("sqs")
-
     for message in event["Records"]:
-        secrets = get_secret("TraktAPI")
+        secrets = get_secret("/GoodFilms/TraktAPI")
         user_id = secrets["USER_ID"]
         list_id = secrets["LIST_ID"]
         api = trakt_api.TraktAPI(secrets["CLIENT_ID"], secrets["ACCESS_TOKEN"])

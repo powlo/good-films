@@ -2,136 +2,72 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
 Description: >
-  Serverless application that periodically scrapes guardian 
-  website for favourable reviews and puts them into a trakt list.
+  A stack template that incorporates all our lambdas.
+  Work in Progress.
+
+Parameters:
+  GuardianApiKey:
+    Type: String
+  GuardianLastSuccess:
+    Type: String
+
+  TraktClientId:
+    Type: String
+  TraktClientSecret:
+    Type: String
+  TraktAccessToken:
+    Type: String
+  TraktRefreshToken:
+    Type: String
+  TraktUserId:
+    Type: String
+  TraktListId:
+    Type: String
+  TraktMaxListSize:
+    Type: String
 
 Resources:
-  GuardianLambdaFunction:
-    Type: AWS::Serverless::Function
+  GuardianService:
+    Type: AWS::Serverless::Application
     Properties:
-      CodeUri: guardian/
-      Handler: app.lambda_handler
-      Runtime: python3.14
-      Timeout: 30
-      Environment:
-        Variables:
-          GUARDIAN_ARTICLE_QUEUE_URL: !Ref GuardianArticleQueue
-      Policies:
-        - SQSSendMessagePolicy:
-            QueueName:
-              !GetAtt GuardianArticleQueue.QueueName
-        - AWSSecretsManagerGetSecretValuePolicy:
-            SecretArn: "arn:aws:secretsmanager:eu-west-2:680611375585:secret:GuardianAPI-LnBR6M"
-        - SSMParameterReadPolicy:
-            ParameterName: "GoodFilms_LastSuccess"
-        - Statement:
-            - Sid: SSMParameterWritePolicy
-              Effect: Allow
-              Action:
-                - ssm:PutParameter
-              Resource: >-
-                arn:aws:ssm:eu-west-2:680611375585:parameter/GoodFilms_LastSuccess
-  TraktLambdaFunction:
-    Type: AWS::Serverless::Function
+      Location: guardian/template.yaml
+      Parameters:
+        DestinationQueueArn: !GetAtt ArticleQueue.Arn
+        DestinationQueueUrl: !GetAtt ArticleQueue.QueueUrl
+        ApiKey: !Ref GuardianApiKey
+        LastSuccess: !Ref GuardianLastSuccess
+
+  TraktService:
+    Type: AWS::Serverless::Application
     Properties:
-      CodeUri: trakt/
-      Handler: app.lambda_handler
-      Runtime: python3.14
-      Timeout: 30
-      ReservedConcurrentExecutions: 1
-      Events:
-        SQSQueueEvent:
-          Type: SQS
-          Properties:
-            Queue: !GetAtt GuardianArticleQueue.Arn
-            BatchSize: 1
-      Policies:
-        - AWSSecretsManagerGetSecretValuePolicy:
-            SecretArn: "arn:aws:secretsmanager:eu-west-2:680611375585:secret:TraktAPI-BFbWUe"
-  TraktTokenRotatorFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: token_rotator/
-      Handler: lambda_function.lambda_handler
-      Runtime: python3.14
-      Timeout: 3
-      Policies:
-        - Statement:
-            - Sid: AllowLambdaToStoreAndRetrieveSecrets
-              Effect: Allow
-              Action:
-                - secretsmanager:DescribeSecret
-                - secretsmanager:GetSecretValue
-                - secretsmanager:PutSecretValue
-                - secretsmanager:UpdateSecretVersionStage
-              Resource: >-
-                arn:aws:secretsmanager:eu-west-2:680611375585:secret:TraktAPI-BFbWUe
-            - Sid: RecordProgressInLogsForEasierDebugging
-              Effect: Allow
-              Action:
-                - logs:CreateLogGroup
-                - logs:CreateLogStream
-                - logs:PutLogEvents
-              Resource: '*'
-      RecursiveLoop: Terminate
-      SnapStart:
-        ApplyOn: None
-      RuntimeManagementConfig:
-        UpdateRuntimeOn: Auto
+      Location: trakt/template.yaml
+      Parameters:
+        SourceQueueArn: !GetAtt ArticleQueue.Arn
 
-  ScheduledRule: 
-    Type: AWS::Events::Rule
-    Properties: 
-      Description: "Invokes the Guardian article scraper every day."
-      ScheduleExpression: "cron(0 0 * * ? *)"
-      State: "ENABLED"
-      Targets: 
-        - Arn: !GetAtt GuardianLambdaFunction.Arn
-          Id:
-            Ref: "GuardianLambdaFunction"
+        ClientId: !Ref TraktClientId
+        ClientSecret: !Ref TraktClientSecret
+        AccessToken: !Ref TraktAccessToken
+        RefreshToken: !Ref TraktRefreshToken
 
-  GuardianLambdaPermission:
-    Type: AWS::Lambda::Permission
-    Properties: 
-      FunctionName: !GetAtt GuardianLambdaFunction.Arn
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn: !GetAtt ScheduledRule.Arn
+        UserId: !Ref TraktUserId
+        ListId: !Ref TraktListId
+        MaxListSize: !Ref TraktMaxListSize
 
-  TokenRotatorPermission:
-    # Allows SecretsManager to auto rotate the secret
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt TraktTokenRotatorFunction.Arn
-      Action: lambda:InvokeFunction
-      Principal: 'secretsmanager.amazonaws.com'
-
-  GuardianArticleDLQ:
+  ArticleDLQ:
     Type: "AWS::SQS::Queue"
     Properties:
       MessageRetentionPeriod: 604800 # 7 days.
-      QueueName: "GoodFilms--GuardianArticleDLQ"
+      QueueName: "GoodFilms--ArticleDLQ"
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
 
-  GuardianArticleQueue:
+  ArticleQueue:
     Type: "AWS::SQS::Queue"
     Properties:
       MessageRetentionPeriod: 604800 # 7 days.
       QueueName: "GoodFilms--GuardianArticles"
       RedrivePolicy:
-        deadLetterTargetArn: !GetAtt GuardianArticleDLQ.Arn
+        deadLetterTargetArn: !GetAtt ArticleDLQ.Arn
         maxReceiveCount: 3
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
-
-Outputs:
-  GuardianLambdaFunction:
-    Description: "Guardian Lambda Function ARN"
-    Value: !GetAtt GuardianLambdaFunction.Arn
-  TraktLambdaFunction:
-    Description: "Trakt Lambda Function ARN"
-    Value: !GetAtt TraktLambdaFunction.Arn
-  LambdaFunctionIamRole:
-    Description: "Implicit IAM Role created for Guardian Films function"
-    Value: !GetAtt GuardianLambdaFunction.Arn

@@ -17,9 +17,9 @@ else:
 session = boto3.Session()
 client = session.client(service_name="ssm", region_name="eu-west-2")
 client.put_parameter(
-    Name="GoodFilms_LastSuccess",
+    Name="GoodFilms/LastSuccess",
     Value=dt.strftime(DATE_FORMAT),
     Type="String",
     Overwrite=True,
 )
-print(f"GoodFilms_LastSuccess set to {dt.strftime(DATE_FORMAT)}")
+print(f"GoodFilms/LastSuccess set to {dt.strftime(DATE_FORMAT)}")

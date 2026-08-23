@@ -8,6 +8,8 @@ Description: >
 Parameters:
   DestinationQueueArn:
     Type: String
+  DestinationQueueUrl:
+    Type: String
   ApiKey:
     Type: String
   LastSuccess:
@@ -23,7 +25,7 @@ Resources:
       Timeout: 30
       Environment:
         Variables:
-          GUARDIAN_ARTICLE_QUEUE_URL: !Ref DestinationQueueArn
+          GUARDIAN_ARTICLE_QUEUE_URL: !Ref DestinationQueueUrl
       Policies:
         - AWSSecretsManagerGetSecretValuePolicy:
             SecretArn: !Ref Secret

@@ -4,8 +4,9 @@ stack_name = "good-films"
 resolve_s3 = true
 s3_prefix = "good-films"
 confirm_changeset = true
-capabilities = "CAPABILITY_IAM"
+capabilities = "CAPABILITY_IAM CAPABILITY_AUTO_EXPAND"
 image_repositories = []
+parameter_overrides = "GuardianApiKey=\"65421a4b-982d-4b60-9ca0-62792ff1d76b\" GuardianLastSuccess=\"2026-05-17\" TraktClientId=\"9c9a7398dc6f87cb740264e1e22ad42585a270da8407b18505aed5e8c0fcf73d\" TraktClientSecret=\"53ff750fc23eb10cb9e6fb8e8c85dbf6b22dd3dfe2ffaedc7b08526604f7511e\" TraktAccessToken=\"8b2fdb05e1edc0bd7072ad699d896007b0f699b19da75247479e6fdb71e35edb\" TraktRefreshToken=\"969436482362e738f6a313bf02fcd9d121b19cdb48787410352def3314bc1d54\" TraktUserId=\"ukdefresit\" TraktListId=\"guardian-films\" TraktMaxListSize=\"100\""
 
 [default.global.parameters]
 region = "eu-west-2"
