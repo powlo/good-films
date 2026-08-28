@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: >
+  Serverless application that sends films to trakt.
+
+Parameters:
+  SourceQueueArn:
+    Type: String
+
+  ClientId:
+    Type: String
+  ClientSecret:
+    Type: String
+  AccessToken:
+    Type: String
+  RefreshToken:
+    Type: String
+
+  UserId:
+    Type: String
+  ListId:
+    Type: String
+  MaxListSize:
+    Type: String
+
+Resources:
+
+  Lambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: app.lambda_handler
+      Runtime: python3.14
+      Timeout: 30
+      ReservedConcurrentExecutions: 1
+      Events:
+        SQSQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !Ref SourceQueueArn
+            BatchSize: 1
+      Policies:
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref Secret
+
+  Secret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Used to access Trakt API
+      Name: /GoodFilms/TraktAPI
+      SecretString: !Sub |
+        {
+          "CLIENT_ID": "${ClientId}",
+          "ACCESS_TOKEN": "${AccessToken}",
+          "REFRESH_TOKEN": "${RefreshToken}",
+          "CLIENT_SECRET": "${ClientSecret}",
+          "USER_ID": "${UserId}",
+          "LIST_ID": "${ListId}",
+          "MAX_LIST_SIZE": "${MaxListSize}"
+        }
+
+Outputs:
+  LambdaArn:
+    Description: "Trakt Lambda Function ARN"
+    Value: !GetAtt Lambda.Arn

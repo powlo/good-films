@@ -1,0 +1,7 @@
+requests
+boto3
+spacy
+
+# Requirements for CLI:
+boto3[crt]
+inquirer
