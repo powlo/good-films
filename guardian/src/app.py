@@ -29,7 +29,7 @@ def get_articles(from_date: datetime) -> Iterator[dict]:
             "api-key": get_secret("/GoodFilms/GuardianAPI")["API_KEY"],
             "star-rating": "4|5",
             "section": "film",
-            "show-fields": ["byline", "starRating"],
+            "show-fields": ["byline", "starRating", "bodyText"],
             "show-references": "imdb",
             "show-tags": "contributor",
             "from-date": from_date_string,
